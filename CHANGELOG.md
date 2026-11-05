@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.2.1 (2026-11)
+- The plugin's name on its page now reads **PotentialWax** (was all capitals), matching its name in the MPC's plugin list. Nothing else changed.
+
 ## 1.2.0 (2026-11)
 - New **WAVE** page: the waveform with all 16 cue points, the selected pad highlighted and a playhead.
 - Zoom (whole song, 16, 4 or 1 bar around the selected cue).
