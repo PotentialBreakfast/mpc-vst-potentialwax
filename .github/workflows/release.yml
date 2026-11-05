@@ -1,0 +1,122 @@
+# Builds a plugin from this repo's source and publishes it as a GitHub release.
+# To release: bump the version in vst/vst.json (1.2.3 = 1203), add .github/release-notes/v<version>.md (e.g. v1.1.1.md) and push to main.
+# Every notes file that has no release yet is built -> host-tested (ASan) -> built for armv7 -> zipped with
+# release.py -> catalog-checked -> published, with the tag created on that commit. Re-run by hand from the Actions tab.
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/release-notes/**', '.github/workflows/release.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  KIT_REPO: https://github.com/sd88me/mpc-vst-plugins
+  KIT_REF: bf1054ce08460cf42b10f96985e73141d64a71af   # pinned: the version the releases were tested with
+  ZIG_VERSION: 0.17.0
+
+jobs:
+  pending:
+    runs-on: ubuntu-24.04
+    outputs:
+      tags: ${{ steps.p.outputs.tags }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Find release notes without a release
+        id: p
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          have=$(gh release list --repo ${{ github.repository }} --limit 200 --json tagName -q '.[].tagName' || true)
+          tags=()
+          for f in .github/release-notes/v*.md; do
+            [ -e "$f" ] || continue   # no notes yet
+            t=$(basename "$f" .md)
+            echo "$have" | grep -qx "$t" || tags+=("$t")
+          done
+          json=$(printf '%s\n' "${tags[@]}" | python3 -c 'import sys,json; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))')
+          echo "pending: $json"
+          echo "tags=$json" >> "$GITHUB_OUTPUT"
+
+  release:
+    needs: pending
+    if: needs.pending.outputs.tags != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        tag: ${{ fromJSON(needs.pending.outputs.tags) }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Work out the version from the tag
+        id: t
+        run: |
+          TAG="${{ matrix.tag }}"
+          { echo "tag=$TAG"; echo "version=${TAG#v}"; } >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Get the build kit (pinned) and tools
+        run: |
+          git clone -q "$KIT_REPO" kit && git -C kit checkout -q "$KIT_REF"
+          git -C kit apply ../shared/mpc-vst-plugins-label-fit.patch
+          pip install "ziglang==$ZIG_VERSION" pillow playwright
+          python -m playwright install --with-deps chromium   # the skin is drawn by the kit's browser renderer ("art": "html")
+          sudo apt-get update -qq && sudo apt-get install -y -qq gcc
+
+      - name: Check the version in vst.json matches the tag
+        run: |
+          python3 - <<PY
+          import json
+          v = json.load(open("vst/vst.json"))["version"]
+          want = "${{ steps.t.outputs.version }}".split(".")
+          expect = int(want[0]) * 1000 + int(want[1]) * 100 + int(want[2])
+          assert v == expect, f"vst.json version {v} != tag {expect}"
+          PY
+
+      - name: Skin, params and host test
+        run: |
+          P=.
+          mkdir -p $P/vst/build
+          gcc -O2 -I kit/tools/vendor/force-shadow/tools -o $P/vst/build/shadow_art kit/tools/shadow_art.c -lm
+          python3 kit/tools/gen_vst.py $P/vst/vst.json
+          bash kit/tools/test_port.sh $P/vst/vst.json
+
+      - name: Build for the MPC (Gen1, armv7)
+        run: |
+          K=$GITHUB_WORKSPACE/kit
+          python3 -m ziglang cc -target arm-linux-gnueabihf.2.31 -mcpu=cortex_a9 -mfpu=neon -O2 -fPIC -shared \
+            -fvisibility=hidden -std=gnu11 -ffast-math -I src -I vst/build -I $K/wrapper \
+            src/wax.c $K/wrapper/vst2_wrap.c -lm -lpthread -Wl,--no-undefined -Wl,-s \
+            -o vst/build/potentialwax.so
+          sha256sum vst/build/potentialwax.so
+
+      - name: Package and check
+        run: |
+          K=$GITHUB_WORKSPACE/kit
+          python3 $K/tools/release.py --so vst/build/potentialwax.so \
+            --skin "vst/build/skin/PotentialBreaks - VST - PotentialWax" \
+            --entry vst/build/pluginlist-entry.xml --version ${{ steps.t.outputs.version }} \
+            --id potentialwax --repo ${{ github.repository }} --license MIT \
+            --about "Melodic sampler: pick or dig a song from your library, 16 cues found for you, matched to your tempo and key." -o $GITHUB_WORKSPACE/dist
+          python3 $K/tools/catalog_check.py $GITHUB_WORKSPACE/dist/*.zip --catalog
+          cd $GITHUB_WORKSPACE/dist && sha256sum *.zip | tee SHA256SUMS
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG=${{ steps.t.outputs.tag }}
+          NOTES=.github/release-notes/$TAG.md
+          [ -f "$NOTES" ] || NOTES=/dev/null
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/*.zip --clobber
+          else
+            gh release create "$TAG" dist/*.zip --target "${{ github.sha }}" --title "PotentialWax ${{ steps.t.outputs.version }}" --notes-file "$NOTES"
+          fi

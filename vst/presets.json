@@ -1,0 +1,9 @@
+{
+ "presets": [
+  {"name": "Flip", "values": {"mode": "Pads", "cue_mode": "Bars", "play_mode": "Hold", "tempo": "Match MPC", "key": "Original", "pitch": 0, "pitch_mode": "Keep Tempo", "choke": "On", "volume": 0, "release": 80}},
+  {"name": "Phrases", "values": {"mode": "Pads", "cue_mode": "Phrases", "play_mode": "To Next Cue", "tempo": "Match MPC", "key": "Original", "pitch": 0, "pitch_mode": "Keep Tempo", "choke": "On", "volume": 0, "release": 120}},
+  {"name": "Stabs", "values": {"mode": "Pads", "cue_mode": "Hits", "play_mode": "Hold", "tempo": "Match MPC", "key": "Original", "pitch": 0, "pitch_mode": "Keep Tempo", "choke": "Off", "volume": 0, "release": 40}},
+  {"name": "Keys", "values": {"mode": "Keys", "cue_mode": "Bars", "play_mode": "Hold", "tempo": "Match MPC", "key": "Original", "pitch": 0, "pitch_mode": "Keep Tempo", "choke": "Off", "volume": 0, "release": 200}},
+  {"name": "Vinyl", "values": {"mode": "Pads", "cue_mode": "Bars", "play_mode": "Hold", "tempo": "Match MPC", "key": "Original", "pitch": 0, "pitch_mode": "Vinyl", "choke": "On", "volume": 0, "release": 80}}
+ ]
+}

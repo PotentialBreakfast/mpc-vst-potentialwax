@@ -1,0 +1,314 @@
+{
+ "name": "PotentialWax",
+ "params": [
+  {
+   "key": "random",
+   "name": "Random Track",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "prev",
+   "name": "Previous Track",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "next",
+   "name": "Next Track",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "lib_next",
+   "name": "Next Library",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "lib_name",
+   "name": "Library",
+   "display": "string",
+   "default": 0,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "key": "track_name",
+   "name": "Track",
+   "display": "string",
+   "default": 0,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "key": "info",
+   "name": "Info",
+   "display": "string",
+   "default": 0,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "key": "status",
+   "name": "Status",
+   "display": "string",
+   "default": 0,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "key": "mode",
+   "name": "Mode",
+   "options": [
+    "Pads",
+    "Keys"
+   ],
+   "default": 0
+  },
+  {
+   "key": "find_cues",
+   "name": "Find New Cues",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "cue_mode",
+   "name": "Cues On",
+   "options": [
+    "Phrases",
+    "Bars",
+    "Hits"
+   ],
+   "default": 1
+  },
+  {
+   "key": "play_mode",
+   "name": "Pad Plays",
+   "options": [
+    "Hold",
+    "To Next Cue",
+    "1 Bar",
+    "2 Bars"
+   ],
+   "default": 0
+  },
+  {
+   "key": "tempo",
+   "name": "Tempo",
+   "options": [
+    "Original",
+    "Match MPC"
+   ],
+   "default": 1
+  },
+  {
+   "key": "key",
+   "name": "Key",
+   "options": [
+    "Original",
+    "C",
+    "C#",
+    "D",
+    "D#",
+    "E",
+    "F",
+    "F#",
+    "G",
+    "G#",
+    "A",
+    "A#",
+    "B"
+   ],
+   "default": 0
+  },
+  {
+   "key": "pitch",
+   "name": "Pitch",
+   "min": -12,
+   "max": 12,
+   "default": 0,
+   "unit": "st",
+   "display": "int"
+  },
+  {
+   "key": "pitch_mode",
+   "name": "Pitch Mode",
+   "options": [
+    "Keep Tempo",
+    "Vinyl"
+   ],
+   "default": 0
+  },
+  {
+   "key": "choke",
+   "name": "Choke",
+   "options": [
+    "Off",
+    "On"
+   ],
+   "default": 1
+  },
+  {
+   "key": "volume",
+   "name": "Volume",
+   "min": -24,
+   "max": 6,
+   "default": 0,
+   "unit": "dB"
+  },
+  {
+   "key": "release",
+   "name": "Release",
+   "min": 5,
+   "max": 2000,
+   "default": 80,
+   "unit": "ms",
+   "display": "int"
+  },
+  {
+   "key": "nudge_back",
+   "name": "Nudge Cue Back",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "nudge_fwd",
+   "name": "Nudge Cue Forward",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "play_song",
+   "name": "Play Whole Song",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "stop",
+   "name": "Stop",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "save_pads",
+   "name": "Save Pads As WAV",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "learn",
+   "name": "Learn",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "base_note",
+   "name": "Pad 1 Note",
+   "min": 0,
+   "max": 111,
+   "default": 36,
+   "display": "int"
+  },
+  {
+   "key": "root_note",
+   "name": "Root Note",
+   "min": 24,
+   "max": 96,
+   "default": 60,
+   "display": "int"
+  },
+  {
+   "key": "rescan",
+   "name": "Rescan Folders",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "pick_1",
+   "name": "Track 1",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "pick_2",
+   "name": "Track 2",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "pick_3",
+   "name": "Track 3",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "pick_4",
+   "name": "Track 4",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "pick_5",
+   "name": "Track 5",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "pick_6",
+   "name": "Track 6",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "pick_7",
+   "name": "Track 7",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "pick_8",
+   "name": "Track 8",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "pick_9",
+   "name": "Track 9",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "pick_10",
+   "name": "Track 10",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "page_up",
+   "name": "Page Up",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "page_down",
+   "name": "Page Down",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "browse_info",
+   "name": "Browse",
+   "display": "string",
+   "default": 0,
+   "min": 0,
+   "max": 1
+  },
+  {
+   "key": "browse_lib",
+   "name": "Browse Next Library",
+   "type": "trigger",
+   "momentary": true
+  }
+ ]
+}

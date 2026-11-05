@@ -1,0 +1,36 @@
+diff --git a/tools/shadow_skin.py b/tools/shadow_skin.py
+index 3fcf899..11609a8 100644
+--- a/tools/shadow_skin.py
++++ b/tools/shadow_skin.py
+@@ -519,7 +519,7 @@ def label_cmds(w, title_font=None):
+         return []
+     s = LABEL_SCALE
+     if k == "enum_h":
+-        return ["text|%d|%d|%s|%s|%s" % (w["cx"], w["cy"] - 33 // 2 - 22, s, INK, lab)]
++        return ["text|%d|%d|%s|%s|%s" % (w["cx"], w["cy"] - 33 // 2 - 22, s, ACCENT_HI, lab)]   # same as enum_v
+     if k == "enum_v":
+         n = len(w["options"])
+         return ["text|%d|%d|%s|%s|%s" % (w["cx"], w["cy"] - (n * 32) // 2 - 24, s, ACCENT_HI, lab)]
+@@ -1006,6 +1006,7 @@ def build(layout_path, params, skin_dir, art_bin, png_from_ppm):
+                     scale = min((bw - 24) / (max(len(longer), 1) * 10.0), (bh - 12) / 14.0)
+                     if scale < 1.15:
+                         scale = 1.15
++                    scale = min(scale, 2.0 if bh >= 120 else 1.45)   # even label sizes: big only on hero buttons
+                 live_cap = bool(w.get("tsize") and w.get("get") in index)
+                 on_fill = BTN_ON or ACCENT
+                 for state, col, lab in (("off", base, lab_off), ("on", on_fill, lab_on)):
+@@ -1378,8 +1379,13 @@ def build(layout_path, params, skin_dir, art_bin, png_from_ppm):
+         for path, w_px, h_px, text, color in label_overlays:
+             im = Image.open(path).convert("RGB")
+             dr = ImageDraw.Draw(im)
+-            font = ImageFont.truetype(TITLE_FONT, max(10, int(h_px * 0.42)))
++            fs = max(10, min(int(h_px * 0.42), 40))
++            font = ImageFont.truetype(TITLE_FONT, fs)
+             tb = dr.textbbox((0, 0), text, font=font)
++            while fs > 10 and tb[2] - tb[0] > w_px - 20:   # shrink to fit the width
++                fs -= 1
++                font = ImageFont.truetype(TITLE_FONT, fs)
++                tb = dr.textbbox((0, 0), text, font=font)
+             tw, th = tb[2] - tb[0], tb[3] - tb[1]
+             dr.text(((w_px - tw) / 2 - tb[0], (h_px - th) / 2 - tb[1]), text, font=font, fill="#" + color)
+             im.save(path)

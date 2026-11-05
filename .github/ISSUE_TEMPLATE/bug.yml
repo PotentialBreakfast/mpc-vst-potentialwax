@@ -1,0 +1,31 @@
+name: 🐛 Bug
+description: Something doesn't work, sounds wrong, crashes or looks broken
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this! Short answers are fine – you don't need to be technical.
+  - type: input
+    id: version
+    attributes:
+      label: Plugin version
+      description: From the zip name, e.g. 1.1.1. "Don't know" is fine.
+  - type: input
+    id: mpc
+    attributes:
+      label: Your MPC and MPC OS version
+      placeholder: e.g. MPC One, MPC OS 3.6
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead. A photo of the screen helps a lot.
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |
+        **Privacy:** please don't paste your IP address, passwords or serial numbers. I never need them.
