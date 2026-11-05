@@ -4,7 +4,7 @@
 
 ![PotentialWax's page on the MPC](docs/images/potentialwax.png)
 
-*Instrument plugin · MPC OS 3.x · Gen1 (32-bit) · v1.1.2*
+*Instrument plugin · MPC OS 3.x · Gen1 (32-bit) · v1.1.5*
 
 Inspired by the way Serato Sample works on computers. Not affiliated with Serato.
 
@@ -24,6 +24,8 @@ Free and open source (MIT), made by **PotentialBreaks**. It runs inside the MPC 
   - **TEMPO:** Original, or Match MPC.
   - **KEY:** Original, or any key from C to B (moves the shortest way, −6 to +5 semitones). **PITCH** adds ±12 on top.
   - **PITCHING:** **Keep Tempo** (time-stretch, so the speed stays put) or **Vinyl** (speed and pitch move together, like a turntable).
+- **Cut loops are recognised.** A file that's a whole number of bars (1, 2, 4, 8, 16 or 32) gets its exact tempo from its length, starts its bar 1 at the start of the file, and its cues go on its beat grid (INFO shows "LOOP 4 BARS"). Cues are nudged onto the actual hit.
+- **÷2 / ×2** halve or double the tempo it found, for half-time and double-time samples. Matching, pad lengths and NUDGE follow it, and your project remembers it.
 - **SAVE PADS** writes the 16 chops as you hear them to WAV files, ready to load into a drum program.
 - **PLAY SONG** / **STOP** play the whole song. **CHOKE**, **RELEASE** and **LEARN** are on the SETUP page.
 - Your project remembers the song, the cues and every setting.
@@ -40,7 +42,7 @@ Every sub-folder becomes a **library**. After adding songs, tap **RESCAN**. **MP
 
 ## Limitations
 
-- **Only the first 6 minutes of a song are used**, and songs shorter than 8 seconds are skipped.
+- **Only the first 6 minutes of a song are used**, and files shorter than about 2 seconds are skipped.
 - **Tempo, key and cues are a best guess.** Songs with tempo changes, rubato or unusual keys can fool it. Putting the BPM in the file name fixes the tempo.
 - **Keep Tempo stretching is clean but not studio-grade.** Big tempo or key changes sound more "stretched". Vinyl mode has no stretch artefacts at all.
 - **8 voices**, and only 44.1 kHz playback.

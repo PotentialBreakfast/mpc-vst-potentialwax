@@ -309,6 +309,18 @@
    "name": "Browse Next Library",
    "type": "trigger",
    "momentary": true
+  },
+  {
+   "key": "tempo_x2",
+   "name": "Tempo x2",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "tempo_half",
+   "name": "Tempo /2",
+   "type": "trigger",
+   "momentary": true
   }
  ]
 }

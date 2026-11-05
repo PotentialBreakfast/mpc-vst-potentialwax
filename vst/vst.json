@@ -2,7 +2,7 @@
  "name": "PotentialWax",
  "vendor": "PotentialBreaks",
  "uid": "PbWx",
- "version": 1102,
+ "version": 1105,
  "so": "potentialwax.so",
  "params": "params.json",
  "layout": "layout.conf",

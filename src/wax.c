@@ -41,7 +41,7 @@
 #define FS 44100
 #define NPADS 16
 #define NVOICES 8
-#define MIN_FILE_SEC 8.0       /* shorter files are one-shots, not songs: skipped */
+#define MIN_FILE_SEC 1.8       /* shorter files are one-shots: skipped (a 1-bar loop at 130 BPM is 1.85 s) */
 #define MAX_FILE_SEC 360.0     /* never use more than the first 6 minutes of a file (memory: 63 MB) */
 #define HOP 441                /* 10 ms analysis hop */
 #define DM 8                   /* decimation of the stretcher's search copy */
@@ -54,6 +54,7 @@ enum {
     P_TEMPO, P_KEY, P_PITCH, P_PITCH_MODE, P_CHOKE, P_VOLUME, P_RELEASE,
     P_NUDGE_BACK, P_NUDGE_FWD, P_PLAY_SONG, P_STOP, P_SAVE_PADS, P_LEARN, P_BASE_NOTE, P_ROOT_NOTE, P_RESCAN,
     P_PICK1, P_PICK10 = P_PICK1 + 9, P_PAGE_UP, P_PAGE_DOWN, P_BROWSE_INFO, P_BROWSE_LIB,
+    P_TEMPO_X2, P_TEMPO_HALF,
     NP
 };
 #define NROWS 10   /* BROWSE: track names per page */
@@ -65,11 +66,12 @@ static const char *const PKEY[NP] = {
     "nudge_back", "nudge_fwd", "play_song", "stop", "save_pads", "learn", "base_note", "root_note", "rescan",
     "pick_1", "pick_2", "pick_3", "pick_4", "pick_5", "pick_6", "pick_7", "pick_8", "pick_9", "pick_10",
     "page_up", "page_down", "browse_info", "browse_lib",
+    "tempo_x2", "tempo_half",
 };
 static int is_trigger(int i) {
     return i == P_RANDOM || i == P_PREV || i == P_NEXT || i == P_LIB_NEXT || i == P_FIND_CUES || i == P_NUDGE_BACK ||
            i == P_NUDGE_FWD || i == P_PLAY_SONG || i == P_STOP || i == P_SAVE_PADS || i == P_LEARN || i == P_RESCAN ||
-           i == P_PAGE_UP || i == P_PAGE_DOWN || i == P_BROWSE_LIB;
+           i == P_PAGE_UP || i == P_PAGE_DOWN || i == P_BROWSE_LIB || i == P_TEMPO_X2 || i == P_TEMPO_HALF;
 }
 enum { MODE_PADS, MODE_KEYS };
 enum { CUE_PHRASES, CUE_BARS, CUE_HITS };
@@ -439,14 +441,16 @@ typedef struct {
     double beat0;               /* sample position of a downbeat */
     int key;                    /* 0-11 major (C..B), 12-23 minor */
     float *onset, *energy; int nh;
+    float *beat_o;              /* onsets for tempo and grid: full band + highs (hats), each scaled to its average */
     float *dm; long ndm;        /* mono, averaged over 8 samples (5.5 kHz): what the stretcher lines grains up on */
+    int loop_beats;             /* > 0: the file is a cut loop of this many beats (starts on its downbeat) */
     long cue0[NPADS];           /* the cues it arrived with */
     char name[160];
     char path[512];
     char drive[256];
 } song_t;
 
-static void song_free(song_t *s) { if (s) { free(s->lr); free(s->onset); free(s->energy); free(s->dm); free(s); } }
+static void song_free(song_t *s) { if (s) { free(s->lr); free(s->onset); free(s->energy); free(s->beat_o); free(s->dm); free(s); } }
 
 static void analyse_env(song_t *S) {
     int H = (int)(S->frames / HOP);
@@ -454,21 +458,35 @@ static void analyse_env(song_t *S) {
     S->onset = calloc((size_t)(H > 0 ? H : 1), sizeof(float));
     S->energy = calloc((size_t)(H > 0 ? H : 1), sizeof(float));
     if (!S->onset || !S->energy || H < 4) return;
-    float prev = 0;
+    float *hi = calloc((size_t)H, sizeof(float));   /* the highs (second difference): hats and the tops of snares */
+    float prev = 0, prevd = 0;
     for (int h = 0; h < H; h++) {
-        double acc = 0, en = 0;
+        double acc = 0, en = 0, hacc = 0;
         for (int i = 0; i < HOP; i++) {
             long k = (long)h * HOP + i;
             float m = (S->lr[2 * k] + S->lr[2 * k + 1]) * (0.5f / 32768.0f);
             float d = m - prev; prev = m;
+            float dd = d - prevd; prevd = d;
             acc += (double)d * d + 0.1 * (double)m * m;
+            hacc += (double)dd * dd;
             en += (double)m * m;
         }
         S->energy[h] = logf((float)(en / HOP) + 1e-9f);
         S->onset[h] = logf((float)(acc / HOP) + 1e-9f);
+        if (hi) hi[h] = logf((float)(hacc / HOP) + 1e-10f);
     }
     for (int h = H - 1; h >= 1; h--) { float d = S->onset[h] - S->onset[h - 1]; S->onset[h] = d > 0 ? d : 0; }
     S->onset[0] = 0;
+    S->beat_o = calloc((size_t)H, sizeof(float));
+    if (hi && S->beat_o) {
+        for (int h = H - 1; h >= 1; h--) { float d = hi[h] - hi[h - 1]; hi[h] = d > 0 ? d : 0; }
+        hi[0] = 0;
+        double mo = 1e-6, mh = 1e-6;
+        for (int h = 0; h < H; h++) { mo += S->onset[h]; mh += hi[h]; }
+        mo /= H; mh /= H;
+        for (int h = 0; h < H; h++) S->beat_o[h] = (float)(S->onset[h] / mo + hi[h] / mh);
+    } else if (S->beat_o) memcpy(S->beat_o, S->onset, (size_t)H * sizeof(float));
+    free(hi);
     S->ndm = S->frames / DM;
     S->dm = malloc((size_t)(S->ndm + 2) * sizeof *S->dm);
     if (S->dm) {
@@ -499,7 +517,7 @@ static float bpm_from_name(const char *name) {
 
 /* tempo from the onset envelope's autocorrelation, 75-150 BPM, over the first 90 s */
 static float detect_bpm(const float *o, int H) {
-    if (!o || H < 400) return 0;
+    if (!o || H < 150) return 0;
     if (H > 9000) H = 9000;
     double best = -1; float bb = 0;
     for (float bpm = 75.0f; bpm <= 150.0f; bpm += 0.25f) {
@@ -643,6 +661,71 @@ static float avg(const float *x, int a, int b, int H) {
     return (float)(s / (b - a));
 }
 
+/* A cut loop: the file is a whole number of bars (1, 2, 4, 8, 16 or 32) at a tempo close to the detected one
+ * (or the one in its name). Then the tempo is exact, the downbeat is the start of the file, and cues sit on its grid. */
+static int detect_loop(song_t *S, int named) {
+    double dur = (double)S->frames / FS;
+    if (dur > 75 || S->bpm <= 0) return 0;
+    static const int BARS[] = {1, 2, 4, 8, 16, 32};
+    double best_err = 1; int best = 0; double best_bpm = 0;
+    for (int i = 0; i < 6; i++) {
+        double b = BARS[i] * 240.0 / dur;
+        if (b < 55 || b > 200) continue;
+        for (int m = 0; m < 3; m++) {   /* the detector can land on half or double time; a name can't */
+            if (named && m) break;
+            double ref = S->bpm * (m == 0 ? 1.0 : m == 1 ? 2.0 : 0.5);
+            double err = fabs(log(b / ref)) + (m ? 0.004 : 0);
+            if (err < best_err) { best_err = err; best = BARS[i]; best_bpm = b; }
+        }
+    }
+    if (!best || best_err > (named ? 0.02 : 0.035)) return 0;
+    S->bpm = (float)best_bpm;
+    S->beat0 = 0;
+    S->loop_beats = best * 4;
+    return 1;
+}
+
+/* fill cue[n..15] with free grid points: bars, then half bars, beats, 8ths, 16ths, spread over the song */
+static int fill_grid(const song_t *S, long *cue, int n, long last) {
+    double beat = 60.0 / S->bpm * FS;
+    static const double DIV[] = {4, 2, 1, 0.5, 0.25};
+    for (int d = 0; d < 5 && n < NPADS; d++) {
+        double step = DIV[d] * beat;
+        double t0 = S->beat0;
+        while (t0 - step >= 0) t0 -= step;
+        long cnt = 0;
+        for (double t = t0; t < last; t += step) cnt++;
+        if (cnt <= 0) continue;
+        long *free_pts = malloc((size_t)cnt * sizeof *free_pts);
+        if (!free_pts) break;
+        long nf = 0;
+        for (double t = t0; t < last && nf < cnt; t += step) {
+            long p = (long)t - 88; if (p < 0) p = 0;
+            int ok = 1;
+            for (int j = 0; j < n; j++) if (labs(cue[j] - p) < (long)(step / 2)) { ok = 0; break; }
+            if (ok) free_pts[nf++] = p;
+        }
+        int need = NPADS - n;
+        if (nf >= need || d == 4) {
+            int take = nf < need ? (int)nf : need;
+            for (int k = 0; k < take; k++) cue[n++] = free_pts[(long)((double)k * nf / take)];
+        }
+        free(free_pts);
+    }
+    return n;
+}
+
+/* move a grid cue onto the hit that's actually there: the strongest onset within +-40 ms, if it stands out */
+static long snap_to_hit(const song_t *S, long pos) {
+    const float *o = S->beat_o ? S->beat_o : S->onset;
+    if (!o || pos <= 0) return pos;
+    int h0 = (int)((pos + 88) / HOP), bi = -1; float bv = 0;
+    for (int h = h0 - 4; h <= h0 + 4; h++) if (h >= 1 && h < S->nh && o[h] > bv) { bv = o[h]; bi = h; }
+    if (bi < 0 || bv < 3.0f) return pos;   /* nothing clear: keep the grid */
+    long p = (long)bi * HOP - 88;
+    return p < 0 ? 0 : p;
+}
+
 /* 16 cues, sorted in time. mode: phrases (every 4 bars), bars, hits. jitter > 0 rolls a different set. */
 static void find_cues(const song_t *S, int mode, unsigned *seed, int jitter, long *cue) {
     int H = S->nh;
@@ -654,6 +737,41 @@ static void find_cues(const song_t *S, int mode, unsigned *seed, int jitter, lon
     long *cand = malloc(MAXC * sizeof *cand); float *score = malloc(MAXC * sizeof *score);   /* per call: instances run at once */
     if (!cand || !score) { free(cand); free(score); for (int i = 0; i < NPADS; i++) cue[i] = (long)((double)last * i / NPADS); return; }
     int nc = 0;
+    if (S->loop_beats > 0) {   /* a cut loop: everything on its grid */
+        free(cand); free(score);
+        long len = frames;
+        int n16 = S->loop_beats * 4;   /* 16th notes in the loop */
+        if (mode != CUE_HITS && !jitter) {   /* 16 equal slices: a beat each for 4 bars, 2 beats for 8, an 8th for 2 */
+            for (int i = 0; i < NPADS; i++) { long p = (long)((double)len * i / NPADS) - (i ? 88 : 0); cue[i] = snap_to_hit(S, p < 0 ? 0 : p); }
+            return;
+        }
+        /* HITS, or FIND CUES on a loop: the 16th-note grid points with the strongest hits (FIND CUES adds chance) */
+        float *sc = malloc((size_t)n16 * sizeof *sc);
+        if (!sc) { for (int i = 0; i < NPADS; i++) cue[i] = (long)((double)len * i / NPADS); return; }
+        for (int g = 0; g < n16; g++) {
+            int h = (int)((double)len * g / n16 / HOP);
+            float o = 0;
+            for (int k = h - 2; k <= h + 2; k++) if (k >= 0 && k < H && S->onset[k] > o) o = S->onset[k];
+            sc[g] = o + (g % 4 == 0 ? 0.15f : 0) + (g % 16 == 0 ? 0.25f : 0);   /* toward beats and bars */
+            if (jitter) { *seed = *seed * 1664525u + 1013904223u; sc[g] *= 0.4f + 1.2f * ((*seed >> 8) & 0xffff) / 65535.0f; }
+        }
+        sc[0] = 1e6f;   /* pad 1 is always the start of the loop */
+        int n = 0;
+        if (n16 <= NPADS) { for (int g = 0; g < n16 && n < NPADS; g++) cue[n++] = (long)((double)len * g / n16); }
+        else {
+            for (; n < NPADS; n++) {
+                int bi = -1;
+                for (int g = 0; g < n16; g++) if (sc[g] > -1e8f && (bi < 0 || sc[g] > sc[bi])) bi = g;
+                if (bi < 0) break;
+                cue[n] = (long)((double)len * bi / n16); sc[bi] = -1e9f;
+            }
+        }
+        free(sc);
+        for (int i = 0; i < n; i++) { cue[i] -= cue[i] ? 88 : 0; if (cue[i] < 0) cue[i] = 0; cue[i] = snap_to_hit(S, cue[i]); }
+        for (int i = n; i < NPADS; i++) cue[i] = (long)((double)len * i / NPADS);
+        for (int a = 0; a < NPADS; a++) for (int b = a + 1; b < NPADS; b++) if (cue[b] < cue[a]) { long t = cue[a]; cue[a] = cue[b]; cue[b] = t; }
+        return;
+    }
     if (mode == CUE_HITS) {
         for (int h = 2; h + 2 < H && nc < MAXC; h++) {
             const float *o = S->onset;
@@ -703,6 +821,8 @@ static void find_cues(const song_t *S, int mode, unsigned *seed, int jitter, lon
         if (min_gap < unit / 2) min_gap = unit / 2 > 1 ? unit / 2 : 1;
     }
     free(cand); free(score);
+    if (n < NPADS) n = fill_grid(S, cue, n, last);   /* not enough: free points on the beat grid */
+    if (mode != CUE_HITS) for (int i = 0; i < n; i++) cue[i] = snap_to_hit(S, cue[i]);
     for (int i = n; i < NPADS; i++) cue[i] = (long)((double)last * i / NPADS);   /* a very short song: even spacing */
     for (int a = 0; a < NPADS; a++) for (int b = a + 1; b < NPADS; b++) if (cue[b] < cue[a]) { long t = cue[a]; cue[a] = cue[b]; cue[b] = t; }
 }
@@ -812,6 +932,7 @@ typedef struct {
     /* audio side */
     long cue[NPADS];
     int last_pad;              /* last pad played: NUDGE moves it, KEYS plays it */
+    int tshift;                /* x2 / /2 taps on the found tempo: -2..2 (half time, double time) */
     int learn_armed, last_note;
     voice_t v[NVOICES];
     song_t *cur;
@@ -837,6 +958,7 @@ typedef struct {
     int saved_lib; char saved_path[512];
 } pw_t;
 
+static double song_bpm(const pw_t *s, const song_t *S) { return S->bpm * ldexp(1.0, s->tshift); }   /* the tempo as the user hears it */
 static void set_text(pw_t *s, char *dst, size_t n, const char *fmt, ...) __attribute__((format(printf, 4, 5)));
 static void set_text(pw_t *s, char *dst, size_t n, const char *fmt, ...) {
     va_list ap; va_start(ap, fmt);
@@ -860,10 +982,15 @@ static void show_info(pw_t *s, const song_t *S) {
     key_text(S->key, k, sizeof k);
     int sh = key_shift(s, S);
     long sec = S->frames / FS;
+    char len[24];
+    const char *tag = s->tshift > 0 ? " (x2)" : s->tshift < 0 ? " (/2)" : "";
+    if (s->tshift == 2) tag = " (x4)"; else if (s->tshift == -2) tag = " (/4)";
+    if (S->loop_beats > 0) snprintf(len, sizeof len, "LOOP %d BAR%s", S->loop_beats / 4, S->loop_beats > 4 ? "S" : "");
+    else snprintf(len, sizeof len, "%ld:%02ld", sec / 60, sec % 60);
     if ((int)lroundf(s->p[P_KEY]) > 0) {
         key_text((S->key % 12 + sh + 12) % 12 + (S->key >= 12 ? 12 : 0), k2, sizeof k2);
-        set_text(s, s->info, sizeof s->info, "%.1f BPM  |  %s > %s (%+d)  |  %ld:%02ld", (double)S->bpm, k, k2, sh, sec / 60, sec % 60);
-    } else set_text(s, s->info, sizeof s->info, "%.1f BPM  |  %s  |  %ld:%02ld", (double)S->bpm, k, sec / 60, sec % 60);
+        set_text(s, s->info, sizeof s->info, "%.1f BPM%s  |  %s > %s (%+d)  |  %s", song_bpm(s, S), tag, k, k2, sh, len);
+    } else set_text(s, s->info, sizeof s->info, "%.1f BPM%s  |  %s  |  %s", song_bpm(s, S), tag, k, len);
 }
 
 static int lib_first(pw_t *s, int lib) {
@@ -892,10 +1019,13 @@ static void load_entry(pw_t *s, int i, const long *cues, int ncues) {
     set_text(s, s->status, sizeof s->status, "LISTENING FOR TEMPO AND KEY...");
     analyse_env(S);
     S->bpm = bpm_from_name(e->name);
-    if (!S->bpm) S->bpm = detect_bpm(S->onset, S->nh);
+    int named = S->bpm > 0;
+    const float *bo = S->beat_o ? S->beat_o : S->onset;
+    if (!S->bpm) S->bpm = detect_bpm(bo, S->nh);
     if (S->bpm <= 0) S->bpm = 90;
-    S->beat0 = find_downbeat(S->onset, S->nh, S->bpm);
+    if (!detect_loop(S, named)) S->beat0 = find_downbeat(bo, S->nh, S->bpm);
     S->key = detect_key(S);
+    if (!cues) s->tshift = 0;   /* a new song starts at the tempo found */
     if (cues && ncues == NPADS) {
         for (int k = 0; k < NPADS; k++) S->cue0[k] = cues[k] < 0 ? 0 : cues[k] >= S->frames ? S->frames - 1 : cues[k];
     } else find_cues(S, (int)lroundf(s->p[P_CUE_MODE]), &s->seed, 0, S->cue0);
@@ -1154,7 +1284,7 @@ static void voice_setup(pw_t *s, voice_t *v, const song_t *S, long start, long e
     v->on = 1; v->held = held; v->pad = -1; v->note = -1;
     v->start = start; v->end = end;
     double tempo = 1.0;
-    if ((int)lroundf(s->p[P_TEMPO]) == 1 && s->host_bpm > 20 && S->bpm > 0) tempo = s->host_bpm / S->bpm;
+    if ((int)lroundf(s->p[P_TEMPO]) == 1 && s->host_bpm > 20 && S->bpm > 0) tempo = s->host_bpm / song_bpm(s, S);
     double st = semis + key_shift(s, S) + s->p[P_PITCH];
     double pitch = pow(2.0, st / 12.0);
     if ((int)lroundf(s->p[P_PITCH_MODE]) == PM_VINYL || (fabs(pitch - 1) < 1e-6 && fabs(tempo - 1) < 1e-6)) {
@@ -1168,7 +1298,7 @@ static void voice_setup(pw_t *s, voice_t *v, const song_t *S, long start, long e
         v->opos = 0;
     }
     v->pos = start;
-    double beat_out = 60.0 / S->bpm * FS / (v->stretch ? v->t : v->rate);   /* a beat of the song, in output samples */
+    double beat_out = 60.0 / song_bpm(s, S) * FS / (v->stretch ? v->t : v->rate);   /* a beat of the song, in output samples */
     v->max_out = -1;
     if (play_mode == PLAY_1BAR) v->max_out = (long)(4 * beat_out);
     else if (play_mode == PLAY_2BARS) v->max_out = (long)(8 * beat_out);
@@ -1323,7 +1453,7 @@ static int find(const char *key) {
 static void nudge(pw_t *s, int dir) {
     song_t *S = s->cur;
     if (!S) return;
-    double beat = 60.0 / S->bpm * FS;
+    double beat = 60.0 / song_bpm(s, S) * FS;
     long step = (long)((int)lroundf(s->p[P_CUE_MODE]) == CUE_HITS ? beat / 4 : beat);
     int pad = s->last_pad;
     pthread_mutex_lock(&s->xfer_mx);   /* the worker copies the cues for SAVE PADS */
@@ -1353,6 +1483,7 @@ static void set_param(void *inst, const char *key, const char *val) {
             const char *v = eq + 1;
             if (!strcmp(tok, "file")) snprintf(file, sizeof file, "%s", v);
             else if (!strcmp(tok, "lib")) s->saved_lib = atoi(v);
+            else if (!strcmp(tok, "tsh")) { int t = atoi(v); s->tshift = t < -2 ? -2 : t > 2 ? 2 : t; }
             else if (!strcmp(tok, "pad")) { int p = atoi(v); s->last_pad = p >= 0 && p < NPADS ? p : 0; }
             else if (!strcmp(tok, "cues")) {
                 char *sv2 = NULL;
@@ -1417,6 +1548,18 @@ static void set_param(void *inst, const char *key, const char *val) {
         }
         return;
     case P_RESCAN: if (press) wake(s, &s->rq_rescan, 1); return;
+    case P_TEMPO_X2: case P_TEMPO_HALF:
+        if (press) {
+            int t = s->tshift + (i == P_TEMPO_X2 ? 1 : -1);
+            if (t < -2 || t > 2) { set_text(s, s->status, sizeof s->status, "TEMPO CAN'T GO FURTHER"); return; }
+            s->tshift = t;
+            song_t *S = s->cur;
+            if (S) {
+                show_info(s, S);
+                set_text(s, s->status, sizeof s->status, "TEMPO NOW %.1f BPM%s", song_bpm(s, S), t ? "  (TAP THE OTHER ONE TO GO BACK)" : "");
+            }
+        }
+        return;
     case P_BROWSE_LIB:
         if (press) { pthread_mutex_lock(&s->mx); s->rq_lib_browse = 1; pthread_mutex_unlock(&s->mx); wake(s, &s->rq_lib, 1); }
         return;
@@ -1493,7 +1636,7 @@ static int get_param(void *inst, const char *key, char *buf, int buf_len) {
         for (size_t k = 0; k < sizeof keep / sizeof *keep && n < buf_len; k++)
             n += snprintf(buf + n, buf_len - n, "%s=%g;", PKEY[keep[k]], (double)s->p[keep[k]]);
         pthread_mutex_lock(&s->mx);
-        if (n < buf_len) n += snprintf(buf + n, buf_len - n, "lib=%d;file=%s;pad=%d;cues=", s->cur_lib, s->saved_path, s->last_pad);
+        if (n < buf_len) n += snprintf(buf + n, buf_len - n, "tsh=%d;lib=%d;file=%s;pad=%d;cues=", s->tshift, s->cur_lib, s->saved_path, s->last_pad);
         pthread_mutex_unlock(&s->mx);
         for (int k = 0; k < NPADS && n < buf_len; k++) n += snprintf(buf + n, buf_len - n, "%ld%s", s->cue[k], k < NPADS - 1 ? "," : "");
         return n < buf_len ? n : buf_len - 1;
