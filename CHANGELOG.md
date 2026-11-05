@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.0 (2026-11)
+- New **WAVE** page: the waveform with all 16 cue points, the selected pad highlighted and a playhead.
+- Zoom (whole song, 16, 4 or 1 bar around the selected cue).
+- Move the selected cue by a bar, a beat, a 1/16 or 5 ms; PLAY PAD, < PAD / PAD >, SNAP TO HIT and RESET CUE.
+
 ## 1.1.5 (2026-11)
 - Cut loops are recognised: exact tempo from the length, bar 1 at the start of the file, cues on the loop's beat grid (a pad per beat on a 4-bar loop). INFO shows "LOOP n BARS".
 - Tempo and the beat grid now also listen to the hi-hats, and every grid cue snaps onto the actual hit nearby.

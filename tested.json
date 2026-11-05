@@ -10,5 +10,11 @@
     "device": "MPC One",
     "firmware": "HAKAI 3.10",
     "date": "2026-11-05"
+  },
+  {
+    "version": "1.2.0",
+    "device": "MPC One",
+    "firmware": "HAKAI 3.10",
+    "date": "2026-11-05"
   }
 ]

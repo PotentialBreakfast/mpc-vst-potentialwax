@@ -44,6 +44,8 @@
 #define MIN_FILE_SEC 1.8       /* shorter files are one-shots: skipped (a 1-bar loop at 130 BPM is 1.85 s) */
 #define MAX_FILE_SEC 360.0     /* never use more than the first 6 minutes of a file (memory: 63 MB) */
 #define HOP 441                /* 10 ms analysis hop */
+#define WPK 256                /* WAVE page: samples per stored peak */
+#define WCOLS 64               /* WAVE page: waveform columns */
 #define DM 8                   /* decimation of the stretcher's search copy */
 
 /* ---------------- parameters (same order as vst/params.json) ---------------- */
@@ -55,6 +57,10 @@ enum {
     P_NUDGE_BACK, P_NUDGE_FWD, P_PLAY_SONG, P_STOP, P_SAVE_PADS, P_LEARN, P_BASE_NOTE, P_ROOT_NOTE, P_RESCAN,
     P_PICK1, P_PICK10 = P_PICK1 + 9, P_PAGE_UP, P_PAGE_DOWN, P_BROWSE_INFO, P_BROWSE_LIB,
     P_TEMPO_X2, P_TEMPO_HALF,
+    P_W0, P_W63 = P_W0 + 63,                       /* WAVE page: 64 waveform columns (display only) */
+    P_WAVE_VIEW, P_WAVE_INFO, P_SEL_PREV, P_SEL_NEXT, P_CUE_PLAY,
+    P_MV_BAR_B, P_MV_BEAT_B, P_MV_16_B, P_MV_FINE_B, P_MV_FINE_F, P_MV_16_F, P_MV_BEAT_F, P_MV_BAR_F,
+    P_SNAP_CUE, P_RESET_CUE,
     NP
 };
 #define NROWS 10   /* BROWSE: track names per page */
@@ -67,11 +73,16 @@ static const char *const PKEY[NP] = {
     "pick_1", "pick_2", "pick_3", "pick_4", "pick_5", "pick_6", "pick_7", "pick_8", "pick_9", "pick_10",
     "page_up", "page_down", "browse_info", "browse_lib",
     "tempo_x2", "tempo_half",
+    "w_00", "w_01", "w_02", "w_03", "w_04", "w_05", "w_06", "w_07", "w_08", "w_09", "w_10", "w_11", "w_12", "w_13", "w_14", "w_15", "w_16", "w_17", "w_18", "w_19", "w_20", "w_21", "w_22", "w_23", "w_24", "w_25", "w_26", "w_27", "w_28", "w_29", "w_30", "w_31", "w_32", "w_33", "w_34", "w_35", "w_36", "w_37", "w_38", "w_39", "w_40", "w_41", "w_42", "w_43", "w_44", "w_45", "w_46", "w_47", "w_48", "w_49", "w_50", "w_51", "w_52", "w_53", "w_54", "w_55", "w_56", "w_57", "w_58", "w_59", "w_60", "w_61", "w_62", "w_63",
+    "wave_view", "wave_info", "sel_prev", "sel_next", "cue_play",
+    "mv_bar_b", "mv_beat_b", "mv_16_b", "mv_fine_b", "mv_fine_f", "mv_16_f", "mv_beat_f", "mv_bar_f",
+    "snap_cue", "reset_cue",
 };
 static int is_trigger(int i) {
     return i == P_RANDOM || i == P_PREV || i == P_NEXT || i == P_LIB_NEXT || i == P_FIND_CUES || i == P_NUDGE_BACK ||
            i == P_NUDGE_FWD || i == P_PLAY_SONG || i == P_STOP || i == P_SAVE_PADS || i == P_LEARN || i == P_RESCAN ||
-           i == P_PAGE_UP || i == P_PAGE_DOWN || i == P_BROWSE_LIB || i == P_TEMPO_X2 || i == P_TEMPO_HALF;
+           i == P_PAGE_UP || i == P_PAGE_DOWN || i == P_BROWSE_LIB || i == P_TEMPO_X2 || i == P_TEMPO_HALF ||
+           (i >= P_SEL_PREV && i <= P_RESET_CUE);
 }
 enum { MODE_PADS, MODE_KEYS };
 enum { CUE_PHRASES, CUE_BARS, CUE_HITS };
@@ -442,6 +453,8 @@ typedef struct {
     int key;                    /* 0-11 major (C..B), 12-23 minor */
     float *onset, *energy; int nh;
     float *beat_o;              /* onsets for tempo and grid: full band + highs (hats), each scaled to its average */
+    float *wpk; long nwpk;      /* WAVE page: peak level per WPK samples */
+    float wmax;                 /* the loudest peak: the waveform is drawn relative to it */
     float *dm; long ndm;        /* mono, averaged over 8 samples (5.5 kHz): what the stretcher lines grains up on */
     int loop_beats;             /* > 0: the file is a cut loop of this many beats (starts on its downbeat) */
     long cue0[NPADS];           /* the cues it arrived with */
@@ -450,7 +463,7 @@ typedef struct {
     char drive[256];
 } song_t;
 
-static void song_free(song_t *s) { if (s) { free(s->lr); free(s->onset); free(s->energy); free(s->beat_o); free(s->dm); free(s); } }
+static void song_free(song_t *s) { if (s) { free(s->lr); free(s->onset); free(s->energy); free(s->beat_o); free(s->wpk); free(s->dm); free(s); } }
 
 static void analyse_env(song_t *S) {
     int H = (int)(S->frames / HOP);
@@ -477,6 +490,14 @@ static void analyse_env(song_t *S) {
     }
     for (int h = H - 1; h >= 1; h--) { float d = S->onset[h] - S->onset[h - 1]; S->onset[h] = d > 0 ? d : 0; }
     S->onset[0] = 0;
+    S->nwpk = S->frames / WPK + 1;
+    S->wpk = calloc((size_t)S->nwpk, sizeof(float));
+    if (S->wpk) for (long i = 0; i < S->frames; i++) {
+        int a = abs(S->lr[2 * i]), b = abs(S->lr[2 * i + 1]);
+        float m = (a > b ? a : b) * (1.0f / 32768.0f);
+        if (m > S->wpk[i / WPK]) S->wpk[i / WPK] = m;
+        if (m > S->wmax) S->wmax = m;
+    }
     S->beat_o = calloc((size_t)H, sizeof(float));
     if (hi && S->beat_o) {
         for (int h = H - 1; h >= 1; h--) { float d = hi[h] - hi[h - 1]; hi[h] = d > 0 ? d : 0; }
@@ -933,6 +954,9 @@ typedef struct {
     long cue[NPADS];
     int last_pad;              /* last pad played: NUDGE moves it, KEYS plays it */
     int tshift;                /* x2 / /2 taps on the found tempo: -2..2 (half time, double time) */
+    long auto_cue[NPADS];      /* the cues as found: RESET CUE goes back to these */
+    int ph_voice;              /* WAVE page: the voice whose position is the playhead */
+    int ph_col; long ph_tick;  /* playhead column shown, and a counter so it's checked every ~50 ms */
     int learn_armed, last_note;
     voice_t v[NVOICES];
     song_t *cur;
@@ -1341,11 +1365,70 @@ static int voice_render(pw_t *s, voice_t *v, const song_t *S, float *l, float *r
 
 static void release_voice(voice_t *v) { if (v->on && v->stopping != 1) v->stopping = 2; }
 
-static int alloc_voice(pw_t *s) {
+static int alloc_voice_(pw_t *s) {
     for (int i = 0; i < NVOICES; i++) if (!s->v[i].on) return i;
     long most = -1; int k = 0;
     for (int i = 0; i < NVOICES; i++) if (s->v[i].played > most) { most = s->v[i].played; k = i; }
     return k;
+}
+static int alloc_voice(pw_t *s) { int k = alloc_voice_(s); s->ph_voice = k; return k; }   /* the newest voice is the playhead */
+
+/* ---- WAVE page: the window shown, and each column's picture (height 0-8 x marker: none, cue, selected cue, playhead) ---- */
+static void wave_window(const pw_t *s, const song_t *S, long *v0, long *v1) {
+    int view = (int)lroundf(s->p[P_WAVE_VIEW]);
+    long span = S->frames;
+    if (view > 0) {
+        static const int BARS[4] = {0, 16, 4, 1};
+        span = (long)(BARS[view] * 4 * 60.0 / song_bpm(s, S) * FS);
+        if (span < WCOLS) span = WCOLS;
+    }
+    if (span >= S->frames) { *v0 = 0; *v1 = S->frames; return; }
+    long c = s->cue[s->last_pad];
+    long a = c - span / 4;   /* the selected cue a quarter of the way in: more of what it plays is in view */
+    if (a < 0) a = 0;
+    if (a + span > S->frames) a = S->frames - span;
+    *v0 = a; *v1 = a + span;
+}
+static long playhead(const pw_t *s) {
+    const voice_t *v = &s->v[s->ph_voice];
+    if (!v->on) return -1;
+    return (long)(v->stretch ? v->nom : v->pos);
+}
+static int wave_col_of(long x, long v0, long v1) {
+    if (x < v0 || x >= v1) return -1;
+    return (int)((double)(x - v0) * WCOLS / (double)(v1 - v0));
+}
+static int wave_frame(const pw_t *s, int col) {
+    const song_t *S = s->cur;
+    if (!S || !S->wpk) return 0;
+    long v0, v1; wave_window(s, S, &v0, &v1);
+    long a = v0 + (long)((double)(v1 - v0) * col / WCOLS), b = v0 + (long)((double)(v1 - v0) * (col + 1) / WCOLS);
+    long ia = a / WPK, ib = (b + WPK - 1) / WPK;
+    if (ib <= ia) ib = ia + 1;
+    float pk = 0;
+    for (long i = ia; i < ib && i < S->nwpk; i++) if (S->wpk[i] > pk) pk = S->wpk[i];
+    int h = 0;
+    if (pk > 0.002f && S->wmax > 0) {   /* relative to the loudest moment, gently curved so quiet parts still show */
+        h = (int)ceilf(8.0f * powf(pk / S->wmax, 0.75f));
+        h = h < 1 ? 1 : h > 8 ? 8 : h;
+    }
+    int mark = 0;
+    for (int k = 0; k < NPADS; k++) if (wave_col_of(s->cue[k], v0, v1) == col) { if (k == s->last_pad) { mark = 2; break; } mark = 1; }
+    if (mark != 2 && wave_col_of(playhead(s), v0, v1) == col) mark = 3;
+    return mark * 9 + h;
+}
+static void wave_move(pw_t *s, long by) {
+    song_t *S = s->cur;
+    if (!S) return;
+    int pad = s->last_pad;
+    pthread_mutex_lock(&s->xfer_mx);
+    long c = s->cue[pad] + by;
+    if (c < 0) c = 0;
+    if (c > S->frames - 1) c = S->frames - 1;
+    s->cue[pad] = c;
+    pthread_mutex_unlock(&s->xfer_mx);
+    double sec = (double)c / FS;
+    set_text(s, s->status, sizeof s->status, "PAD %d CUE AT %d:%06.3f", pad + 1, (int)(sec / 60), fmod(sec, 60));
 }
 
 static void start_pad(pw_t *s, int pad, int note, int vel) {
@@ -1404,12 +1487,14 @@ static void take_handover(pw_t *s) {
         s->cur = s->next;
         s->next = NULL;
         memcpy(s->cue, s->cur->cue0, sizeof s->cue);
+        memcpy(s->auto_cue, s->cue, sizeof s->cue);
         for (int i = 0; i < NVOICES; i++) s->v[i].on = 0;
         s->last_pad = 0;
         wake_worker = s->garbage != NULL;
     }
     if (s->pend_cues && !s->next) {
         memcpy(s->cue, s->pend_cue, sizeof s->cue);
+        memcpy(s->auto_cue, s->cue, sizeof s->cue);
         s->pend_cues = 0;
     }
     pthread_mutex_unlock(&s->xfer_mx);
@@ -1420,6 +1505,12 @@ static void render(void *inst, int16_t *out_lr, int frames) {
     pw_t *s = inst;
     take_handover(s);
     song_t *S = s->cur;
+    if (S && (s->ph_tick += frames) >= 5512) {   /* about 8 times a second: has the playhead moved to another column? */
+        s->ph_tick = 0;
+        long v0, v1; wave_window(s, S, &v0, &v1);
+        int col = wave_col_of(playhead(s), v0, v1);
+        if (col != s->ph_col) { s->ph_col = col; __atomic_add_fetch(&s->display_rev, 1, __ATOMIC_RELAXED); }
+    }
     float mixl[128], mixr[128], l[128], r[128];
     while (frames > 0) {
         int n = frames > 128 ? 128 : frames;
@@ -1548,6 +1639,43 @@ static void set_param(void *inst, const char *key, const char *val) {
         }
         return;
     case P_RESCAN: if (press) wake(s, &s->rq_rescan, 1); return;
+    case P_SEL_PREV: case P_SEL_NEXT:
+        if (press) {
+            s->last_pad = (s->last_pad + (i == P_SEL_NEXT ? 1 : NPADS - 1)) % NPADS;
+            set_text(s, s->status, sizeof s->status, "PAD %d SELECTED", s->last_pad + 1);
+        }
+        return;
+    case P_CUE_PLAY:
+        if (press && s->cur) {
+            song_t *S = s->cur;
+            long start = s->cue[s->last_pad], end = S->frames;
+            for (int j = 0; j < NPADS; j++) if (s->cue[j] > start && s->cue[j] < end) end = s->cue[j];
+            for (int k = 0; k < NVOICES; k++) if (s->v[k].on) release_voice(&s->v[k]);
+            voice_t *vv = &s->v[alloc_voice(s)];
+            voice_setup(s, vv, S, start, end, 0, PLAY_TO_NEXT, 0);
+            vv->pad = s->last_pad;
+        }
+        return;
+    case P_MV_BAR_B: case P_MV_BEAT_B: case P_MV_16_B: case P_MV_FINE_B:
+    case P_MV_FINE_F: case P_MV_16_F: case P_MV_BEAT_F: case P_MV_BAR_F:
+        if (press && s->cur) {
+            double beat = 60.0 / song_bpm(s, s->cur) * FS;
+            static const double STEP[8] = {-4, -1, -0.25, 0, 0, 0.25, 1, 4};
+            int k = i - P_MV_BAR_B;
+            long by = k == 3 ? -220 : k == 4 ? 220 : (long)lround(STEP[k] * beat);   /* FINE = 5 ms */
+            wave_move(s, by);
+        }
+        return;
+    case P_SNAP_CUE:
+        if (press && s->cur) { long c = s->cue[s->last_pad], n = snap_to_hit(s->cur, c);
+            if (n == c) set_text(s, s->status, sizeof s->status, "NO CLEAR HIT NEAR PAD %d'S CUE", s->last_pad + 1);
+            else wave_move(s, n - c); }
+        return;
+    case P_RESET_CUE:
+        if (press && s->cur) wave_move(s, s->auto_cue[s->last_pad] - s->cue[s->last_pad]);
+        return;
+    case P_WAVE_VIEW: s->p[i] = v; pthread_mutex_lock(&s->text_mx); s->display_rev++; pthread_mutex_unlock(&s->text_mx); return;
+    case P_WAVE_INFO: return;
     case P_TEMPO_X2: case P_TEMPO_HALF:
         if (press) {
             int t = s->tshift + (i == P_TEMPO_X2 ? 1 : -1);
@@ -1589,6 +1717,7 @@ static void set_param(void *inst, const char *key, const char *val) {
         if ((int)lroundf(v) == MODE_KEYS) set_text(s, s->status, sizeof s->status, "KEYS: PAD %d ACROSS THE KEYBOARD", s->last_pad + 1);
         else set_text(s, s->status, sizeof s->status, "PADS: 16 CUES");
         return;
+    case P_W0 ... P_W63: return;   /* display only */
     default: s->p[i] = v; return;
     }
 }
@@ -1631,7 +1760,7 @@ static int get_param(void *inst, const char *key, char *buf, int buf_len) {
     }
     if (!strcmp(key, "state")) {
         int n = 0;
-        static const int keep[] = {P_MODE, P_CUE_MODE, P_PLAY_MODE, P_TEMPO, P_KEY, P_PITCH, P_PITCH_MODE, P_CHOKE, P_VOLUME,
+        static const int keep[] = {P_WAVE_VIEW, P_MODE, P_CUE_MODE, P_PLAY_MODE, P_TEMPO, P_KEY, P_PITCH, P_PITCH_MODE, P_CHOKE, P_VOLUME,
                                    P_RELEASE, P_BASE_NOTE, P_ROOT_NOTE};
         for (size_t k = 0; k < sizeof keep / sizeof *keep && n < buf_len; k++)
             n += snprintf(buf + n, buf_len - n, "%s=%g;", PKEY[keep[k]], (double)s->p[keep[k]]);
@@ -1640,6 +1769,26 @@ static int get_param(void *inst, const char *key, char *buf, int buf_len) {
         pthread_mutex_unlock(&s->mx);
         for (int k = 0; k < NPADS && n < buf_len; k++) n += snprintf(buf + n, buf_len - n, "%ld%s", s->cue[k], k < NPADS - 1 ? "," : "");
         return n < buf_len ? n : buf_len - 1;
+    }
+    if (key[0] == 'w' && key[1] == '_' && isdigit((unsigned char)key[2]) && isdigit((unsigned char)key[3]) && !key[4]) {
+        int col = (key[2] - '0') * 10 + (key[3] - '0');   /* a WAVE column: its picture, as a value 0..1 (36 frames) */
+        if (col >= WCOLS) return 0;
+        int f = wave_frame(s, col);
+        double v = f >= 35 ? 1.0 : (f + 0.25) / 35.0;
+        return snprintf(buf, buf_len, "%.5f", v);
+    }
+    if (!strcmp(key, "wave_info")) {
+        const song_t *S = s->cur;
+        if (!S) return snprintf(buf, buf_len, "LOAD A SONG FIRST");
+        static const char *const VIEW[4] = {"WHOLE SONG", "16 BARS", "4 BARS", "1 BAR"};
+        int view = (int)lroundf(s->p[P_WAVE_VIEW]);
+        long c = s->cue[s->last_pad];
+        double sec = (double)c / FS, beat = 60.0 / song_bpm(s, S) * FS;
+        double b = (c + (c ? 88 : 0) - S->beat0) / beat;   /* beats from the first downbeat */
+        if (b < 0) b = 0;
+        int bar = (int)(b / 4) + 1; double bt = fmod(b, 4) + 1;
+        return snprintf(buf, buf_len, "PAD %d   |   %d:%06.3f   |   BAR %d  BEAT %.2f   |   VIEW: %s",
+                        s->last_pad + 1, (int)(sec / 60), fmod(sec, 60), bar, bt, VIEW[view < 0 ? 0 : view > 3 ? 3 : view]);
     }
     int i = find(key);
     if (i < 0) return 0;

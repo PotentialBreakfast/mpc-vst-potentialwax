@@ -4,7 +4,7 @@
 
 ![PotentialWax's page on the MPC](docs/images/potentialwax.png)
 
-*Instrument plugin · MPC OS 3.x · Gen1 (32-bit) · v1.1.5*
+*Instrument plugin · MPC OS 3.x · Gen1 (32-bit) · v1.2.0*
 
 Inspired by the way Serato Sample works on computers. Not affiliated with Serato.
 
@@ -29,6 +29,17 @@ Free and open source (MIT), made by **PotentialBreaks**. It runs inside the MPC 
 - **SAVE PADS** writes the 16 chops as you hear them to WAV files, ready to load into a drum program.
 - **PLAY SONG** / **STOP** play the whole song. **CHOKE**, **RELEASE** and **LEARN** are on the SETUP page.
 - Your project remembers the song, the cues and every setting.
+
+## The WAVE page
+
+![The WAVE page: the waveform with the 16 cue points](docs/images/potentialwax-wave.png)
+
+- **See every cue:** the song's waveform with all 16 cue points as amber lines. The selected pad's cue glows brighter, and a white line follows playback.
+- **Playing a pad selects it**, so you see straight away where it starts. **< PAD / PAD >** pick one without playing.
+- **VIEW:** the whole song, or zoom in to 16, 4 or 1 bar around the selected cue.
+- **Move the selected cue** by a bar, a beat, a 1/16 note or a tiny step (5 ms), backwards or forwards. **PLAY PAD** to hear it.
+- **SNAP TO HIT** moves the cue onto the nearest real hit; **RESET CUE** puts it back where it was found.
+- The info line shows the pad, its exact time and its bar and beat. Your project remembers the cues.
 
 ## Where it finds your songs
 
