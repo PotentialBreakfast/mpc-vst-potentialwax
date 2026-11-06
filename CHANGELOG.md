@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.2 (2026-11)
+- Fixed: pressing **Overdub** (or STOP) while the MPC was playing could load a different song. The MPC's host briefly "presses" a plugin's first parameter when it re-prepares audio, and that was RANDOM TRACK. That first slot now does nothing, and RANDOM TRACK is a new parameter at the end. The transport never changes the loaded song or its playback.
+- If you had automation or a Q-Link on RANDOM TRACK (unlikely), point it at the new **Random Track** parameter.
+
 ## 1.2.1 (2026-11)
 - The plugin's name on its page now reads **PotentialWax** (was all capitals), matching its name in the MPC's plugin list. Nothing else changed.
 

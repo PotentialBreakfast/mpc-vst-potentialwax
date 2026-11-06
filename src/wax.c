@@ -61,6 +61,7 @@ enum {
     P_WAVE_VIEW, P_WAVE_INFO, P_SEL_PREV, P_SEL_NEXT, P_CUE_PLAY,
     P_MV_BAR_B, P_MV_BEAT_B, P_MV_16_B, P_MV_FINE_B, P_MV_FINE_F, P_MV_16_F, P_MV_BEAT_F, P_MV_BAR_F,
     P_SNAP_CUE, P_RESET_CUE,
+    P_RANDOM_TRACK,   /* 1.2.2: RANDOM TRACK moved here; P_RANDOM (parameter 0) is a dead slot, see set_param */
     NP
 };
 #define NROWS 10   /* BROWSE: track names per page */
@@ -77,9 +78,10 @@ static const char *const PKEY[NP] = {
     "wave_view", "wave_info", "sel_prev", "sel_next", "cue_play",
     "mv_bar_b", "mv_beat_b", "mv_16_b", "mv_fine_b", "mv_fine_f", "mv_16_f", "mv_beat_f", "mv_bar_f",
     "snap_cue", "reset_cue",
+    "random_track",
 };
 static int is_trigger(int i) {
-    return i == P_RANDOM || i == P_PREV || i == P_NEXT || i == P_LIB_NEXT || i == P_FIND_CUES || i == P_NUDGE_BACK ||
+    return i == P_RANDOM || i == P_RANDOM_TRACK || i == P_PREV || i == P_NEXT || i == P_LIB_NEXT || i == P_FIND_CUES || i == P_NUDGE_BACK ||
            i == P_NUDGE_FWD || i == P_PLAY_SONG || i == P_STOP || i == P_SAVE_PADS || i == P_LEARN || i == P_RESCAN ||
            i == P_PAGE_UP || i == P_PAGE_DOWN || i == P_BROWSE_LIB || i == P_TEMPO_X2 || i == P_TEMPO_HALF ||
            (i >= P_SEL_PREV && i <= P_RESET_CUE);
@@ -1611,7 +1613,12 @@ static void set_param(void *inst, const char *key, const char *val) {
     float v = (float)atof(val);
     int press = v > 0.5f;
     switch (i) {
-    case P_RANDOM: if (press) wake(s, &s->rq_random, 1); return;
+    /* Parameter 0 is a dead slot. MPC's host flicks parameter 0 to the far end and back whenever it re-prepares audio
+     * (on STOP, and when Overdub is pressed while playing). The kit's wrapper drops the pair only if no audio block runs
+     * between them; while playing one does, so the flick reached RANDOM TRACK and loaded another song (1.2.1 and before).
+     * Kept in the table so saved projects keep their parameter indices. */
+    case P_RANDOM: return;
+    case P_RANDOM_TRACK: if (press) wake(s, &s->rq_random, 1); return;
     case P_PREV: if (press) wake(s, &s->rq_prev, 1); return;
     case P_NEXT: if (press) wake(s, &s->rq_next, 1); return;
     case P_LIB_NEXT: if (press) wake(s, &s->rq_lib, 1); return;

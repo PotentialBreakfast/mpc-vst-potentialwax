@@ -3,9 +3,10 @@
  "params": [
   {
    "key": "random",
-   "name": "Random Track",
+   "name": "(unused)",
    "type": "trigger",
-   "momentary": true
+   "momentary": true,
+   "legacy": true
   },
   {
    "key": "prev",
@@ -927,6 +928,12 @@
   {
    "key": "reset_cue",
    "name": "Reset Cue",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "random_track",
+   "name": "Random Track",
    "type": "trigger",
    "momentary": true
   }
