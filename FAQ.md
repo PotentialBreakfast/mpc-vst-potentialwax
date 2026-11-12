@@ -5,6 +5,7 @@ Can't find your answer? [Ask in an issue](../../issues/new/choose). There are no
 ## Installing
 
 **The plugin isn't in my plugin list.**
+- **MPC OS 3.10.1+:** check **Preferences → Enhancements (Beta)**: **Enable Enhancements** and **External Plugin Support** must both be ticked, and the plugin's folder must sit directly inside **VST2 Plugins** at the top of the drive.
 - **Restart:** the list only updates after the MPC app restarts, so turn the MPC off and on if in doubt.
 - **The wrong list:** PotentialWax is an **instrument**: make a plugin track and look in the plugin list.
 - **The MPC isn't set up for third-party plugins yet:** see [Before you start](INSTALL-GUIDE.md#before-you-start-is-your-mpc-ready-for-plugins).
@@ -17,10 +18,10 @@ The plugin folder is on a drive the MPC can't run programs from, or isn't in a f
 The MPC's internal storage is full. A common cause is the MPC's own cache of plugin graphics in `/var/tmp/filmstrips`, which can grow to gigabytes. With the MPC app stopped, deleting `/var/tmp/filmstrips/temp_*` is safe, because the MPC makes new ones when it needs them.
 
 **Which file do I download?**
-The one ending **`-mpc-armv7.zip`** from [Releases](../../releases). The "Source code" links are for developers.
+On **MPC OS 3.10.1 or later**: the one ending **`-akai-vst2.zip`**. On older MPC OS 3.x with the community set-up: the one ending **`-mpc-armv7.zip`**. The "Source code" links are for developers.
 
 **Will it work on my MPC One+, Live III or Key 37?**
-Not yet. Those are Gen2 machines, and there's no Gen2 build. [Let me know](../../issues/new?template=idea.yml) if you'd use one, because it helps me decide what to do next.
+Yes, on **MPC OS 3.10.1 or later**, with the **`-akai-vst2.zip`**: it has builds for 32-bit and 64-bit MPCs. The 64-bit one hasn't been tried on a real Gen2 MPC yet, so please [tell me how it goes](../../issues/new/choose).
 
 ## PotentialWax
 

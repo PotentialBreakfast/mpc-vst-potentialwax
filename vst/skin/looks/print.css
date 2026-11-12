@@ -1,0 +1,74 @@
+/* PotentialSuite look A, "Print Plate": a warm putty plate printed in one black ink, with the plugin's own
+ * colour as the second ink. Flat, no shadows or gloss. Jost + DM Mono (SIL OFL, fonts/).
+ * Only looks change here: every control stays where the layout puts it. */
+@font-face { font-family: "Jost"; font-weight: 400; src: url("fonts/Jost-400.woff2"); }
+@font-face { font-family: "Jost"; font-weight: 600; src: url("fonts/Jost-600.woff2"); }
+@font-face { font-family: "Jost"; font-weight: 700; src: url("fonts/Jost-700.woff2"); }
+@font-face { font-family: "DM Mono"; font-weight: 400; src: url("fonts/DMMono-400.woff2"); }
+@font-face { font-family: "DM Mono"; font-weight: 500; src: url("fonts/DMMono-500.woff2"); }
+
+@font-face { font-family: "Plex Cond"; font-weight: 700; src: url("fonts/PlexCond-700.woff2"); }
+
+:root {
+  --font: "Jost", "Titillium Web", sans-serif;
+  --mono: "DM Mono", "Titillium Web", monospace;
+  --title-font: var(--font);
+  --title-size: 23px;
+  --label-size: 15px;
+  --seg-size: 14px;
+  --button-size: 20px;
+  --radius: 10px;
+  --sheen: 0;
+  --shadow: none;
+  --p-ink: #1b1a18;
+  --p-cream: #efe8d8;
+  --p-well: #c7c0b1;
+  --p-face: #e7e1d5;
+}
+text { font-family: var(--font); font-weight: 600; }
+
+/* panels: a printed outline on the plate, a heavy rule under the title */
+.frame-border { fill: #dfd9cd; stroke: var(--p-ink); stroke-width: 1.5; rx: 8px; }
+.frame-rule { stroke: var(--p-ink); stroke-width: 2; }
+.frame-title { font-family: var(--font); font-weight: 700; font-size: var(--title-size); fill: var(--p-ink);
+               letter-spacing: 0.1em; }
+.text { font-family: var(--mono); font-weight: 500; letter-spacing: 0.06em; }
+
+/* knobs: flat black cap, a printed tick scale, the value as a band of the plugin's colour */
+.knob-track { stroke: var(--p-ink); stroke-width: 6px !important; stroke-dasharray: 2 8.5; stroke-linecap: butt; }
+.knob-arc { stroke: var(--accent); stroke-width: 5px !important; stroke-linecap: butt; }
+.knob-face { fill: var(--p-ink); stroke: none; filter: none; }
+.knob-sheen { fill: #2f2d2a; transform-box: fill-box; transform-origin: center; transform: scale(0.78); }
+.knob-pointer { stroke: var(--p-cream); stroke-linecap: round; }
+
+/* switches */
+.pill-track { fill: var(--p-well); stroke: var(--p-ink); stroke-width: 2; }
+.pill-thumb { fill: var(--p-ink); filter: none; }
+.on .pill-track { fill: var(--accent); }
+.on .pill-thumb { fill: var(--p-cream); stroke: var(--p-ink); stroke-width: 2; filter: none; }
+
+/* buttons: outlined keys */
+.button-bg { stroke: var(--p-ink); stroke-width: 3; filter: none; }
+.button-sheen { display: none; }
+.button-tx { font-family: var(--font); font-weight: 700; font-size: var(--button-size); letter-spacing: 0.02em; fill: var(--p-ink); }
+
+/* option segments */
+.seg-bg { stroke: var(--p-ink); stroke-width: 2; }
+.seg-sheen { display: none; }
+/* option names are set in a condensed face so long ones fit their keys */
+.seg-tx { font-family: "Plex Cond", var(--font); font-weight: 700; font-size: var(--seg-size); letter-spacing: 0.04em; }
+
+/* text boxes: a dark display window */
+.box-label { font-family: var(--mono); font-weight: 500; letter-spacing: 0.08em; fill: var(--p-ink); }
+.box { fill: #111514; stroke: var(--p-ink); stroke-width: 2; rx: 6px; }
+.arrow-bg { fill: var(--p-ink); }
+.arrow { fill: var(--p-cream); }
+
+/* list rows */
+.tile-border { stroke: var(--p-ink); }
+.tile-rule { fill: #2a302e; }
+
+/* sliders */
+.slider-well { fill: var(--p-well); stroke: var(--p-ink); stroke-width: 2; }
+.slider-fill { fill: var(--accent); }
+.slider-thumb { fill: var(--p-ink); stroke: var(--p-cream); stroke-width: 2; filter: none; }

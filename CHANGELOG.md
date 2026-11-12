@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.0 (2026-11)
+- **Three looks.** A new default look, **Print Plate** (a warm printed panel), plus **Night Rack** (dark rack unit) and **Colour Block** (flat, big type), each in PotentialWax's own colour. Pick one with the big LOOK keys on the SETUP page; it shows the next time the plugin loads (take it off and add it again, or load your project again), and it is remembered on your MPC for every project.
+- Sound, controls and saved projects are unchanged. One parameter was added at the end of the list (LOOK); it is never saved in a project.
+- **Akai's plugin folder format** for MPC OS 3.10.1 and later: a second download (`-akai-vst2.zip`) with 32-bit and 64-bit builds, so it now also runs on Gen2 MPCs. Copy the folder into `VST2 Plugins` and turn on External Plugin Support: no hacking needed.
+
 ## 1.2.2 (2026-11)
 - Fixed: pressing **Overdub** (or STOP) while the MPC was playing could load a different song. The MPC's host briefly "presses" a plugin's first parameter when it re-prepares audio, and that was RANDOM TRACK. That first slot now does nothing, and RANDOM TRACK is a new parameter at the end. The transport never changes the loaded song or its playback.
 - If you had automation or a Q-Link on RANDOM TRACK (unlikely), point it at the new **Random Track** parameter.

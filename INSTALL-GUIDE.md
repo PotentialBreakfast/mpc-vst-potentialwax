@@ -2,6 +2,22 @@
 
 New to adding plugins to an MPC? Start here. It takes about 10 minutes the first time, and after that installing anything is quick.
 
+## On MPC OS 3.10.1 or later: Akai's plugin folder (the easiest way)
+
+Since MPC OS 3.10.1, every standalone MPC (32-bit and 64-bit) can load plugins from other people without any hacking.
+
+1. **Turn plugins on (once).** On the MPC: **Preferences → Enhancements (Beta)**, tick **Enable Enhancements** and **External Plugin Support**.
+2. **Download** `PotentialWax-<version>-akai-vst2.zip` from [**Releases**](../../releases) and **unzip** it on your computer. Inside is a folder called **PotentialBreaks - VST - PotentialWax**.
+3. **Make the plugin folder (once).** At the very top of a USB stick, SD card or the MPC's internal drive, make a folder called exactly **VST2 Plugins**.
+4. **Copy** the whole **PotentialBreaks - VST - PotentialWax** folder into **VST2 Plugins**. Copy the folder, not just the files in it.
+5. **Restart** the MPC. It's under **External Plugins**.
+
+Keep the stick in the MPC while you use the plugin. The drive must not be read-only: the LOOK switch saves your choice inside the plugin's folder.
+
+**That's it: you can skip the rest of this guide.** The rest is for older MPC OS 3.x on Gen1 MPCs, using the community set-up. Install one way only, or the plugin shows up twice.
+
+---
+
 ## Before you start: is your MPC ready for plugins?
 
 Standalone MPCs don't load plugins from other people out of the box. Your MPC needs to be set up for them once. Pick whichever matches you:

@@ -2,3 +2,7 @@ build/
 dist/
 *.so
 *.o
+# made by shared/looks/make_looks.py and build_looks.py
+vst/skin/looks/_*
+vst/_vst.*.json
+__pycache__/

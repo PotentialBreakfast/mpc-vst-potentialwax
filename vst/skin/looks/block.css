@@ -1,0 +1,72 @@
+/* PotentialSuite look C, "Colour Block": the whole plate in the plugin's colour, heavy black rules, big type
+ * and flat dials. Nothing pretends to be hardware. Bricolage Grotesque + Space Mono (SIL OFL, fonts/).
+ * Only looks change here: every control stays where the layout puts it. */
+@font-face { font-family: "Bricolage"; font-weight: 400; src: url("fonts/Bricolage-400.woff2"); }
+@font-face { font-family: "Bricolage"; font-weight: 600; src: url("fonts/Bricolage-600.woff2"); }
+@font-face { font-family: "Bricolage"; font-weight: 800; src: url("fonts/Bricolage-800.woff2"); }
+@font-face { font-family: "Space Mono"; font-weight: 400; src: url("fonts/SpaceMono-400.woff2"); }
+@font-face { font-family: "Space Mono"; font-weight: 700; src: url("fonts/SpaceMono-700.woff2"); }
+
+@font-face { font-family: "Plex Cond"; font-weight: 700; src: url("fonts/PlexCond-700.woff2"); }
+
+:root {
+  --font: "Bricolage", "Titillium Web", sans-serif;
+  --mono: "Space Mono", "Titillium Web", monospace;
+  --title-font: var(--font);
+  --title-size: 27px;
+  --label-size: 16px;
+  --seg-size: 15px;
+  --button-size: 21px;
+  --radius: 0px;
+  --sheen: 0;
+  --shadow: none;
+  --b-ink: #0e1f1b;
+  --b-cream: #f2ecdd;
+}
+text { font-family: var(--font); font-weight: 800; }
+
+/* panels: blocks ruled off in heavy black, the title set big */
+.frame-border { fill: none; stroke: var(--b-ink); stroke-width: 4; rx: 0; }
+.frame-rule { stroke: var(--b-ink); stroke-width: 4; }
+.frame-title { font-family: var(--font); font-weight: 800; font-size: var(--title-size); fill: var(--b-ink);
+               letter-spacing: 0; text-transform: none; }
+.text { font-family: var(--mono); font-weight: 700; letter-spacing: 0; }
+
+/* dials: a flat black disc, a cream hand, the value as a heavy ring */
+.knob-track { stroke: var(--b-ink); stroke-width: 5px !important; stroke-linecap: butt; opacity: 0.22; }
+.knob-arc { stroke: var(--b-ink); stroke-width: 5px !important; stroke-linecap: butt; }
+.knob-face { fill: var(--b-ink); stroke: none; filter: none; transform-box: fill-box; transform-origin: center; transform: scale(0.88); }
+.knob-sheen { display: none; }
+.knob-pointer { stroke: var(--b-cream); stroke-linecap: butt; }
+
+/* switches */
+.pill-track { fill: var(--b-cream); stroke: var(--b-ink); stroke-width: 3; rx: 0; }
+.pill-thumb { fill: var(--b-ink); filter: none; }
+.on .pill-track { fill: var(--b-ink); }
+.on .pill-thumb { fill: var(--b-cream); filter: none; }
+
+/* buttons */
+.button-bg { stroke: var(--b-ink); stroke-width: 4; filter: none; rx: 0; }
+.button-sheen { display: none; }
+.button-tx { font-family: var(--font); font-weight: 800; font-size: var(--button-size); letter-spacing: 0; fill: var(--b-ink); }
+
+/* option segments */
+.seg-bg { stroke: var(--b-ink); stroke-width: 3; }
+.seg-sheen { display: none; }
+/* option names are set in a condensed face so long ones fit their keys */
+.seg-tx { font-family: "Plex Cond", var(--font); font-weight: 700; font-size: var(--seg-size); letter-spacing: 0.02em; }
+
+/* text boxes: black blocks with cream type */
+.box-label { font-family: var(--mono); font-weight: 700; letter-spacing: 0; fill: var(--b-ink); }
+.box { fill: var(--b-ink); stroke: none; rx: 0; }
+.arrow-bg { fill: var(--b-ink); rx: 0; }
+.arrow { fill: var(--b-cream); }
+
+/* list rows */
+.tile-border { stroke: var(--b-cream); }
+.tile-rule { fill: #2c403a; }
+
+/* sliders */
+.slider-well { fill: var(--b-cream); stroke: var(--b-ink); stroke-width: 3; rx: 0; }
+.slider-fill { fill: var(--b-ink); }
+.slider-thumb { fill: var(--b-ink); stroke: var(--b-cream); stroke-width: 3; filter: none; }

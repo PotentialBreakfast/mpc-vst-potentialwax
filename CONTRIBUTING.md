@@ -30,7 +30,7 @@ Pull requests are welcome.
 - **Talk first if it's big.** Open an issue before a large change so we can agree the approach.
 - **Building and testing:** follow [BUILD.md](BUILD.md). Please run `test_port.sh` before sending.
 - **Saved projects:** parameters are **append-only** (`vst/params.lock`). Add new ones at the end so existing projects keep loading.
-- **Keep the look:** new pages should use the shared dark theme in `shared/potential-theme.conf`.
+- **Keep the looks:** lay new pages out in `vst/layout.base.conf` (no colours there) and check all three looks; see BUILD.md.
 - **Licence:** by sending code you agree it's released under this repo's [MIT licence](LICENSE).
 
 ## Security or privacy

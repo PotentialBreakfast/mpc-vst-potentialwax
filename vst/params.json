@@ -936,6 +936,16 @@
    "name": "Random Track",
    "type": "trigger",
    "momentary": true
+  },
+  {
+   "key": "theme",
+   "name": "Look",
+   "options": [
+    "Print Plate",
+    "Night Rack",
+    "Colour Block"
+   ],
+   "default": 0
   }
  ]
 }

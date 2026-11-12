@@ -1,0 +1,2 @@
+/* PotentialWax: the narrow KEY, TEMPO and PITCHING keys need smaller names to fit */
+.seg-bg[width="64"] ~ .seg-tx, .seg-bg[width="78"] ~ .seg-tx { font-size: 12px; letter-spacing: 0; }

@@ -42,7 +42,7 @@ projects with their own licences.
 
 ## Fonts – SIL Open Font License 1.1
 
-**Barlow** and **Barlow Condensed** by Jeremy Tribby (https://github.com/jpt/barlow), from Google Fonts. The `.ttf` files and the licence (`OFL-Barlow.txt`) are in `vst/skin/fonts/`. They are used to draw the plugin's page; the fonts themselves are not changed.
+Used to draw the three looks (the text is baked into the skin's pictures; the font files themselves are only in this repository, in `vst/skin/looks/fonts/`, each with its licence `OFL-*.txt`): **Jost** (The Jost Project Authors), **DM Mono** (The DM Mono Project Authors), **IBM Plex Sans Condensed** and **IBM Plex Mono** (IBM Corp.), **Bricolage Grotesque** (The Bricolage Grotesque Project Authors) and **Space Mono** (The Space Mono Project Authors).
 
 ## Fonts – SIL Open Font License 1.1
 

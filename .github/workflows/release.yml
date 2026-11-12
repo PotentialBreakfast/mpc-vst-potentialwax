@@ -17,6 +17,8 @@ env:
   KIT_REPO: https://github.com/sd88me/mpc-vst-plugins
   KIT_REF: bf1054ce08460cf42b10f96985e73141d64a71af   # pinned: the version the releases were tested with
   ZIG_VERSION: 0.17.0
+  SDK_REPO: https://github.com/inmusic-software/mpc-plugin-builder-sdk   # Akai's plugin SDK: converter + checker
+  SDK_REF: febd2ca5bd9eb16c4a412837196e145566bc981b
 
 jobs:
   pending:
@@ -67,7 +69,7 @@ jobs:
           git clone -q "$KIT_REPO" kit && git -C kit checkout -q "$KIT_REF"
           git -C kit apply ../shared/mpc-vst-plugins-label-fit.patch
           pip install "ziglang==$ZIG_VERSION" pillow playwright
-          python -m playwright install --with-deps chromium   # the skin is drawn by the kit's browser renderer ("art": "html")
+          python -m playwright install --with-deps chromium   # the skins are drawn by the kit's browser renderer ("art": "html")
           sudo apt-get update -qq && sudo apt-get install -y -qq gcc
 
       - name: Check the version in vst.json matches the tag
@@ -85,8 +87,13 @@ jobs:
           P=.
           mkdir -p $P/vst/build
           gcc -O2 -I kit/tools/vendor/force-shadow/tools -o $P/vst/build/shadow_art kit/tools/shadow_art.c -lm
-          python3 kit/tools/gen_vst.py $P/vst/vst.json
+          python3 shared/looks/build_looks.py $P/vst kit   # the three looks, merged into one switchable skin
           bash kit/tools/test_port.sh $P/vst/vst.json
+          # the LOOK switch, on a copy of the built plugin folder
+          gcc -fsanitize=address,undefined -g -O1 -w -std=gnu11 -ffast-math -I src -I vst/build -I kit/wrapper \
+            shared/looks/test_theme.c src/wax.c -lm -lpthread -o vst/build/test_theme
+          cp -r "vst/build/skin/PotentialBreaks - VST - PotentialWax" "$RUNNER_TEMP/plugin"
+          vst/build/test_theme "$RUNNER_TEMP/plugin"
 
       - name: Build for the MPC (Gen1, armv7)
         run: |
@@ -107,6 +114,18 @@ jobs:
             --about "Melodic sampler: pick or dig a song from your library, 16 cues found for you, matched to your tempo and key." -o $GITHUB_WORKSPACE/dist
           python3 $K/tools/catalog_check.py $GITHUB_WORKSPACE/dist/*.zip --catalog
           cd $GITHUB_WORKSPACE/dist && sha256sum *.zip | tee SHA256SUMS
+
+      - name: Akai plugin folder format (MPC OS 3.10.1+, 32 and 64-bit)
+        run: |
+          K=$GITHUB_WORKSPACE/kit
+          git clone -q "$SDK_REPO" sdk && git -C sdk checkout -q "$SDK_REF"
+          python3 -m ziglang cc -target aarch64-linux-gnu.2.31 -mcpu=cortex_a55 -O2 -fPIC -shared \
+            -fvisibility=hidden -std=gnu11 -ffast-math -I src -I vst/build -I $K/wrapper \
+            src/wax.c $K/wrapper/vst2_wrap.c -lm -lpthread -Wl,--no-undefined -Wl,-s \
+            -o vst/build/potentialwax-arm64.so
+          python3 shared/akai/akai_pack.py --sdk sdk --zip dist/PotentialWax-${{ steps.t.outputs.version }}-mpc-armv7.zip \
+            --so64 vst/build/potentialwax-arm64.so --out dist --category "Sampler"
+          cd dist && sha256sum *.zip | tee SHA256SUMS
 
       - name: Publish the release
         env:

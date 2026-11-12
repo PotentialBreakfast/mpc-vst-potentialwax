@@ -1,0 +1,72 @@
+/* PotentialSuite look B, "Night Rack": a deep navy rack unit with cream print, pointer knobs and the
+ * plugin's colour as its lit LEDs. IBM Plex Sans Condensed + IBM Plex Mono (SIL OFL, fonts/).
+ * Only looks change here: every control stays where the layout puts it. */
+@font-face { font-family: "Plex Cond"; font-weight: 400; src: url("fonts/PlexCond-400.woff2"); }
+@font-face { font-family: "Plex Cond"; font-weight: 600; src: url("fonts/PlexCond-600.woff2"); }
+@font-face { font-family: "Plex Cond"; font-weight: 700; src: url("fonts/PlexCond-700.woff2"); }
+@font-face { font-family: "Plex Mono"; font-weight: 400; src: url("fonts/PlexMono-400.woff2"); }
+@font-face { font-family: "Plex Mono"; font-weight: 500; src: url("fonts/PlexMono-500.woff2"); }
+
+:root {
+  --font: "Plex Cond", "Titillium Web", sans-serif;
+  --mono: "Plex Mono", "Titillium Web", monospace;
+  --title-font: var(--font);
+  --title-size: 23px;
+  --label-size: 15px;
+  --seg-size: 14px;
+  --button-size: 20px;
+  --radius: 6px;
+  --sheen: 0;
+  --shadow: none;
+  --r-cream: #ece5d3;
+  --r-navy: #121826;
+  --r-face: #1e2740;
+  --r-off: #26304a;
+  --r-rule: #4a5674;
+  --glow: drop-shadow(0 0 2px var(--accent));
+}
+text { font-family: var(--font); font-weight: 600; }
+
+/* panels: channel strips ruled off in a thin line, a cream rule under the title */
+.frame-border { fill: #151c2d; stroke: var(--r-rule); stroke-width: 1; rx: 4px; }
+.frame-rule { stroke: var(--r-cream); stroke-width: 1.5; }
+.frame-title { font-family: var(--font); font-weight: 600; font-size: var(--title-size); fill: var(--r-cream);
+               letter-spacing: 0.12em; }
+.text { font-family: var(--mono); font-weight: 400; letter-spacing: 0.06em; }
+
+/* knobs: a cream-ringed cap with a bold pointer, cream scale ticks, the value as a lit LED band */
+.knob-track { stroke: var(--r-cream); stroke-width: 6px !important; stroke-dasharray: 1.6 7.4; stroke-linecap: butt; opacity: 0.85; }
+.knob-arc { stroke: var(--accent); stroke-width: 5px !important; stroke-linecap: butt; filter: var(--glow); }
+.knob-face { fill: var(--r-face); stroke: var(--r-cream); stroke-width: 2; filter: none; }
+.knob-sheen { fill: var(--r-navy); stroke: var(--r-cream); stroke-width: 6; transform-box: fill-box; transform-origin: center; transform: scale(0.16); }
+.knob-pointer { stroke: var(--r-cream); stroke-linecap: butt; }
+
+/* switches: an LED that lights */
+.pill-track { fill: #080c16; stroke: #3a4662; stroke-width: 1.5; }
+.pill-thumb { fill: #3a4662; filter: none; }
+.on .pill-thumb { fill: var(--accent); filter: var(--glow); }
+
+/* buttons */
+.button-bg { stroke: var(--r-cream); stroke-width: 2; filter: none; }
+.button-sheen { display: none; }
+.button-tx { font-family: var(--font); font-weight: 600; font-size: var(--button-size); letter-spacing: 0.08em; fill: var(--r-cream); }
+
+/* option segments */
+.seg-bg { stroke: var(--r-cream); stroke-width: 1.5; }
+.seg-sheen { display: none; }
+.seg-tx { font-family: var(--font); font-weight: 700; font-size: var(--seg-size); letter-spacing: 0.04em; }
+
+/* text boxes: a recessed LCD */
+.box-label { font-family: var(--mono); font-weight: 400; letter-spacing: 0.08em; fill: #aeb7cc; }
+.box { fill: #080c16; stroke: #3a4662; stroke-width: 2; rx: 4px; }
+.arrow-bg { fill: var(--r-face); stroke: var(--r-cream); stroke-width: 1.5; }
+.arrow { fill: var(--r-cream); }
+
+/* list rows */
+.tile-border { stroke: #3a4662; }
+.tile-rule { fill: #26304a; }
+
+/* sliders */
+.slider-well { fill: #080c16; stroke: #3a4662; stroke-width: 1.5; }
+.slider-fill { fill: var(--accent); filter: var(--glow); }
+.slider-thumb { fill: var(--r-face); stroke: var(--r-cream); stroke-width: 2; filter: none; }
