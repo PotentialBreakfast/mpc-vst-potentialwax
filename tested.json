@@ -46,5 +46,11 @@
     "device": "MPC One",
     "firmware": "MPC OS 3.10.1",
     "date": "2026-11-13"
+  },
+  {
+    "version": "1.4.0",
+    "device": "MPC One",
+    "firmware": "MPC OS 3.10.1",
+    "date": "2026-11-13"
   }
 ]
