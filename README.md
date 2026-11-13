@@ -4,7 +4,7 @@
 
 ![PotentialWax's page on the MPC](docs/images/potentialwax.png)
 
-*Instrument plugin · MPC OS 3.x · Gen1 and Gen2 · v1.3.2*
+*Instrument plugin · MPC OS 3.x · Gen1 and Gen2 · v1.6.0*
 
 Inspired by the way Serato Sample works on computers. Not affiliated with Serato.
 
