@@ -962,6 +962,12 @@
     "WILD"
    ],
    "default": 1
+  },
+  {
+   "key": "save_kit",
+   "name": "Save Kit",
+   "type": "trigger",
+   "momentary": true
   }
  ]
 }

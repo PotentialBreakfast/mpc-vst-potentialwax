@@ -26,7 +26,7 @@ Yes, on **MPC OS 3.10.1 or later**, with the **`-akai-vst2.zip`**: it has builds
 ## PotentialWax
 
 **It says no songs were found.**
-Make a folder called `MELODIC LIBRARY` at the top of a drive (or any top-level folder with **melodic**, **wax**, **flip** or **songs** in its name), put MP3, WAV or FLAC files in it, then tap **RESCAN**.
+Make a folder called `MELODIC LIBRARY` at the top of a drive (or any top-level folder with **melodic**, **wax**, **flip** or **songs** in its name), put MP3, WAV or FLAC files in it, then tap **RESCAN** (on the BROWSE page).
 
 **It changes songs by itself.**
 Your MIDI input is probably set to **Global**, so the plugin hears MIDI meant for other tracks. Set the MIDI input to the track instead. (From 1.1.1 MIDI can't change songs anyway.)
@@ -39,6 +39,9 @@ Tap **LEARN** (SETUP page), then hit the pad you want as pad 1.
 
 **Where does SAVE PADS put the files?**
 In `PotentialWax/<song name>/` on the drive the song is on, as `<song> 01.wav` to `16.wav`.
+
+**Where does SAVE KIT put the kit?**
+In `PotentialWax/Kits` on the drive the song is on, unless `PotentialWax/kit-folder.txt` (or PotentialBreaks' `kit-folder.txt`) there names another folder. Load the `.xpm` like any drum program; the `.mid` beside it plays the 16 pads in order.
 
 ## Everything else
 

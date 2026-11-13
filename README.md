@@ -27,6 +27,7 @@ Free and open source (MIT), made by **PotentialBreaks**. It runs inside the MPC 
   - **PITCHING:** **Keep Tempo** (time-stretch, so the speed stays put) or **Vinyl** (speed and pitch move together, like a turntable).
 - **Cut loops are recognised.** A file that's a whole number of bars (1, 2, 4, 8, 16 or 32) gets its exact tempo from its length, starts its bar 1 at the start of the file, and its cues go on its beat grid (INFO shows "LOOP 4 BARS"). Cues are nudged onto the actual hit.
 - **÷2 / ×2** halve or double the tempo it found, for half-time and double-time samples. Matching, pad lengths and NUDGE follow it, and your project remembers it.
+- **SAVE KIT** turns the 16 pads into a real **MPC drum program**: each pad saved as a WAV, as you hear it (at your tempo, key and pitch), on pads A01-A16, with a MIDI file beside it that plays the 16 pads in order. Load it like any program and keep it after the plugin is gone. MPC OS 3.10.1 or later.
 - **SAVE PADS** writes the 16 chops as you hear them to WAV files, ready to load into a drum program.
 - **PLAY SONG** / **STOP** play the whole song. **CHOKE**, **RELEASE** and **LEARN** are on the SETUP page.
 - Your project remembers the song, the cues and every setting.
@@ -50,7 +51,7 @@ You don't have to type any paths. It looks in three places:
 2. **Any folder at the top of a drive with "melodic", "wax", "flip" or "songs" in its name.**
 3. **Folders you list yourself** in `PotentialWax/folders.txt` on that drive (one folder per line, a full path or a folder on that drive).
 
-Every sub-folder becomes a **library**. After adding songs, tap **RESCAN**. **MP3, WAV and FLAC** files are supported.
+Every sub-folder becomes a **library**. After adding songs, tap **RESCAN** (on the BROWSE page). **MP3, WAV and FLAC** files are supported.
 
 ## Three looks
 
@@ -64,6 +65,7 @@ PotentialWax comes in three looks: **Print Plate** (the default), **Night Rack**
 - **8 voices**, and only 44.1 kHz playback.
 - **The pads map like a keyboard.** LEARN sets which note is pad 1.
 - **SAVE PADS** writes to a `PotentialWax` folder on the song's drive.
+- **SAVE KIT** writes to `PotentialWax/Kits` on the song's drive. To use your own programs folder instead, put its full path on the first line of `PotentialWax/kit-folder.txt` there (for example `/media/SDMPC/My Programs`). If you already set one up for PotentialBreaks (`PotentialBreaks/kit-folder.txt`), Wax uses that too. Each kit is `<name>.xpm`, its WAVs in `<name>_[ProgramData]`, and `<name>.mid`.
 - **Tested on an MPC One only** (Gen1). The 64-bit build for Gen2 MPCs passes Akai's own checks but hasn't been tried on a Gen2 MPC yet.
 
 ## Will it work on my MPC?

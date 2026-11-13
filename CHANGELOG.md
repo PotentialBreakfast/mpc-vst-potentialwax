@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.0 (2026-11)
+- **SAVE KIT**: one tap saves the 16 pads as a real **MPC drum program**: each pad as a WAV, as you hear it (at your tempo, key and pitch), on pads A01-A16, with a MIDI file beside it that plays the 16 pads in order on the beat. Load it like any program, and keep it after the plugin is gone. It goes to `PotentialWax/Kits` on the song's drive, or to the folder named on the first line of `PotentialWax/kit-folder.txt` there, or of PotentialBreaks' `kit-folder.txt`, so both plugins can save to the same programs folder. Needs MPC OS 3.10.1 or later (the program format it writes).
+- A pad set to **HOLD** is saved as **TO NEXT CUE** (a sample can't know how long you'd hold it). Each saved pad is at most 16 seconds.
+- **RESCAN** moved to the BROWSE page, under LIBRARY, to make room for SAVE KIT next to SAVE PADS. One parameter was added at the end of the list (Save Kit); saved projects open as before.
+
 ## 1.4.0 (2026-11)
 - **ROLL**: one tap for a random song played a random way. **MILD** puts the cues on phrases or bars, in the original key. **MEDIUM** may also cue on the hits, change what a pad plays, move to a new key and nudge the pitch. **WILD** picks any key, can switch to vinyl pitching and moves the pitch up to 5 semitones. TEMPO is left alone, so MATCH MPC keeps it in time. RANDOM TRACK still just picks a song.
 - The DIG panel is rearranged to fit ROLL. Two parameters were added at the end of the list (Roll, Roll Wildness); saved projects open as before.

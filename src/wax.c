@@ -64,6 +64,7 @@ enum {
     P_SNAP_CUE, P_RESET_CUE,
     P_RANDOM_TRACK,   /* 1.2.2: RANDOM TRACK moved here; P_RANDOM (parameter 0) is a dead slot, see set_param */
     P_DICE, P_WILD,   /* 1.4.0: ROLL and how wild it rolls (after the LOOK parameter in params.json) */
+    P_SAVE_KIT,       /* 1.5.0: the 16 pads as an MPC drum program */
     NP
 };
 #define NROWS 10   /* BROWSE: track names per page */
@@ -80,13 +81,13 @@ static const char *const PKEY[NP] = {
     "wave_view", "wave_info", "sel_prev", "sel_next", "cue_play",
     "mv_bar_b", "mv_beat_b", "mv_16_b", "mv_fine_b", "mv_fine_f", "mv_16_f", "mv_beat_f", "mv_bar_f",
     "snap_cue", "reset_cue",
-    "random_track", "dice", "wild",
+    "random_track", "dice", "wild", "save_kit",
 };
 static int is_trigger(int i) {
     return i == P_RANDOM || i == P_RANDOM_TRACK || i == P_PREV || i == P_NEXT || i == P_LIB_NEXT || i == P_FIND_CUES || i == P_NUDGE_BACK ||
            i == P_NUDGE_FWD || i == P_PLAY_SONG || i == P_STOP || i == P_SAVE_PADS || i == P_LEARN || i == P_RESCAN ||
            i == P_PAGE_UP || i == P_PAGE_DOWN || i == P_BROWSE_LIB || i == P_TEMPO_X2 || i == P_TEMPO_HALF ||
-           (i >= P_SEL_PREV && i <= P_RESET_CUE) || i == P_DICE;
+           (i >= P_SEL_PREV && i <= P_RESET_CUE) || i == P_DICE || i == P_SAVE_KIT;
 }
 enum { MODE_PADS, MODE_KEYS };
 enum { CUE_PHRASES, CUE_BARS, CUE_HITS };
@@ -972,7 +973,7 @@ typedef struct {
     pthread_t th; int th_ok;
     pthread_mutex_t mx; pthread_cond_t cv;
     int quit;
-    int rq_random, rq_prev, rq_next, rq_lib, rq_cues, rq_save, rq_restore, rq_rescan, rq_pick;
+    int rq_random, rq_prev, rq_next, rq_lib, rq_cues, rq_save, rq_restore, rq_rescan, rq_pick, rq_kit;
     pthread_mutex_t lib_mx;    /* the library list: the worker rescans it, the screen reads names from it (BROWSE) */
     int bpage;                 /* BROWSE: the page shown */
     int rq_lib_browse;         /* LIBRARY tapped on the BROWSE page: change library without loading a song */
@@ -1098,48 +1099,174 @@ static int write_wav(const char *path, const float *lr, long frames) {
     return fclose(f);
 }
 
+/* pad `pad` as it plays, at most 16 s (malloc'd stereo frames in *frames; NULL if out of memory). HOLD saves as TO NEXT
+   CUE: a saved sample can't know how long the pad is held. */
+static float *render_pad(pw_t *s, const song_t *S, const long *cue, int pad, long *frames) {
+    long maxf = 16L * FS;
+    float *buf = malloc((size_t)maxf * 2 * sizeof *buf), l[256], r[256];
+    voice_t *v = calloc(1, sizeof *v);
+    if (!buf || !v) { free(buf); free(v); return NULL; }
+    int pm = (int)lroundf(s->p[P_PLAY_MODE]);
+    if (pm == PLAY_HOLD) pm = PLAY_TO_NEXT;
+    long start = cue[pad], end = S->frames;
+    for (int j = 0; j < NPADS; j++) if (cue[j] > start && cue[j] < end) end = cue[j];
+    if (pm != PLAY_TO_NEXT) end = S->frames;
+    voice_setup(s, v, S, start, end, 0, pm, 0);
+    long n = 0;
+    while (n < maxf) {
+        int want = maxf - n < 256 ? (int)(maxf - n) : 256;
+        int got = voice_render(s, v, S, l, r, want);
+        for (int i = 0; i < got; i++) { buf[2 * (n + i)] = l[i]; buf[2 * (n + i) + 1] = r[i]; }
+        n += got;
+        if (got < want) break;
+    }
+    free(v);
+    *frames = n;
+    return buf;
+}
+
+static void clean_name(char *dst, size_t n, const char *src) {
+    size_t k = 0;
+    for (const char *c = src; *c && k < n - 1; c++)
+        dst[k++] = (*c == '/' || *c == '\\' || *c == ':' || *c == '*' || *c == '?' || *c == '"' || *c == '<' || *c == '>' || *c == '|') ? '-' : *c;
+    dst[k] = 0;
+}
+
 static void save_pads(pw_t *s, const song_t *S, const long *cue) {
     if (!S) { set_text(s, s->status, sizeof s->status, "LOAD A SONG FIRST"); return; }
     const char *drive = S->drive[0] ? S->drive : s->libs.root_drive;
     if (!drive[0]) { set_text(s, s->status, sizeof s->status, "NO DRIVE TO SAVE TO"); return; }
     char clean[100];
-    int k = 0;
-    for (const char *c = S->name; *c && k < (int)sizeof clean - 1; c++)
-        clean[k++] = (*c == '/' || *c == '\\' || *c == ':' || *c == '*' || *c == '?' || *c == '"' || *c == '<' || *c == '>' || *c == '|') ? '-' : *c;
-    clean[k] = 0;
+    clean_name(clean, sizeof clean, S->name);
     char dir[512], sub[700];
     snprintf(dir, sizeof dir, "%s/" LIST_DIR, drive);
     mkdir(dir, 0777);
     snprintf(sub, sizeof sub, "%s/%s", dir, clean);
     mkdir(sub, 0777);
-    long maxf = 16L * FS;
-    float *buf = malloc((size_t)maxf * 2 * sizeof *buf), *l = malloc(256 * sizeof *l), *r = malloc(256 * sizeof *r);
-    voice_t *v = calloc(1, sizeof *v);
-    if (!buf || !l || !r || !v) { free(buf); free(l); free(r); free(v); set_text(s, s->status, sizeof s->status, "OUT OF MEMORY"); return; }
-    int pm = (int)lroundf(s->p[P_PLAY_MODE]);
-    if (pm == PLAY_HOLD) pm = PLAY_TO_NEXT;
     int saved = 0;
     for (int pad = 0; pad < NPADS; pad++) {
         set_text(s, s->status, sizeof s->status, "SAVING PAD %d OF 16...", pad + 1);
-        long start = cue[pad], end = S->frames;
-        for (int j = 0; j < NPADS; j++) if (cue[j] > start && cue[j] < end) end = cue[j];
-        if (pm != PLAY_TO_NEXT) end = S->frames;
-        voice_setup(s, v, S, start, end, 0, pm, 0);
         long n = 0;
-        while (n < maxf) {
-            int want = maxf - n < 256 ? (int)(maxf - n) : 256;
-            int got = voice_render(s, v, S, l, r, want);
-            for (int i = 0; i < got; i++) { buf[2 * (n + i)] = l[i]; buf[2 * (n + i) + 1] = r[i]; }
-            n += got;
-            if (got < want) break;
-        }
+        float *buf = render_pad(s, S, cue, pad, &n);
+        if (!buf) { set_text(s, s->status, sizeof s->status, "OUT OF MEMORY"); return; }
         char path[900];
         snprintf(path, sizeof path, "%s/%s %02d.wav", sub, clean, pad + 1);
         if (n > 0 && !write_wav(path, buf, n)) saved++;
+        free(buf);
     }
-    free(buf); free(l); free(r); free(v);
     if (saved) set_text(s, s->status, sizeof s->status, "SAVED %d PADS: PotentialWax/%.40s", saved, clean);
     else set_text(s, s->status, sizeof s->status, "COULDN'T WRITE THE WAV FILES");
+}
+
+/* ---------------- SAVE KIT ---------------- */
+#include "kit_writer.h"
+
+/* where kits go: the first line of PotentialWax/kit-folder.txt on the song's drive, else of PotentialBreaks/kit-folder.txt
+   there (one programs folder for both plugins), else PotentialWax/Kits on that drive */
+static void kit_folder(const char *drive, char *dir, size_t n) {
+    static const char *const LISTS[] = {LIST_DIR "/kit-folder.txt", "PotentialBreaks/kit-folder.txt"};
+    snprintf(dir, n, "%s/" LIST_DIR "/Kits", drive);
+    for (size_t k = 0; k < sizeof LISTS / sizeof *LISTS; k++) {
+        char p[600];
+        snprintf(p, sizeof p, "%s/%s", drive, LISTS[k]);
+        FILE *f = fopen(p, "r");
+        if (!f) continue;
+        char line[512] = "";
+        int got = fgets(line, sizeof line, f) != NULL;
+        fclose(f);
+        if (!got) continue;
+        size_t m = strlen(line);
+        while (m && (line[m - 1] == '\n' || line[m - 1] == '\r' || line[m - 1] == ' ')) line[--m] = 0;
+        if (line[0] == '/') { snprintf(dir, n, "%s", line); return; }
+        if (line[0] && line[0] != '#') { snprintf(dir, n, "%s/%s", drive, line); return; }
+    }
+}
+
+typedef struct { pw_t *s; const song_t *S; const long *cue; } kit_ctx_t;
+static float *kit_get(void *ctx, int pad, long *frames) {
+    kit_ctx_t *k = ctx;
+    set_text(k->s, k->s->status, sizeof k->s->status, "SAVING THE KIT: PAD %d OF 16...", pad + 1);
+    return render_pad(k->s, k->S, k->cue, pad, frames);
+}
+static void kit_done(void *ctx, int pad, float *lr) { (void)ctx; (void)pad; free(lr); }
+
+static void wr16(FILE *f, int v) { fputc((v >> 8) & 255, f); fputc(v & 255, f); }
+static void wr32(FILE *f, long v) { wr16(f, (int)((v >> 16) & 0xFFFF)); wr16(f, (int)(v & 0xFFFF)); }
+static void wrvar(FILE *f, unsigned long v) {
+    unsigned char b[5]; int n = 0;
+    b[n++] = v & 127;
+    while (v >>= 7) b[n++] = 128 | (v & 127);
+    while (n--) fputc(b[n], f);
+}
+
+/* the kit's MIDI: pads A01-A16 (notes 36-51) one after another, each for beats[pad] (on a 1/16 grid), so it plays the 16
+   cues in order at the kit's tempo */
+static int write_kit_midi(const char *path, const long *frames, const double *beats, double bpm) {
+    const int PPQ = 96;
+    char *buf = NULL; size_t blen = 0;
+    FILE *t = open_memstream(&buf, &blen);
+    if (!t) return -1;
+    long us = (long)(60000000.0 / bpm);
+    fputc(0, t); fputc(0xFF, t); fputc(0x51, t); fputc(3, t); fputc((us >> 16) & 255, t); fputc((us >> 8) & 255, t); fputc(us & 255, t);
+    long at = 0, last = 0;
+    for (int pad = 0; pad < NPADS; pad++) {
+        if (frames[pad] <= 1) continue;
+        long len = lround(beats[pad] * 4.0) * (PPQ / 4);   /* whole 1/16 notes */
+        if (len < PPQ / 4) len = PPQ / 4;
+        wrvar(t, (unsigned long)(at - last)); fputc(0x90, t); fputc(36 + pad, t); fputc(100, t);
+        wrvar(t, (unsigned long)(len > 1 ? len - 1 : 1)); fputc(0x80, t); fputc(36 + pad, t); fputc(0, t);
+        last = at + (len > 1 ? len - 1 : 1);
+        at += len;
+    }
+    long end = (at + 4 * PPQ - 1) / (4 * PPQ) * (4 * PPQ);   /* to the end of the bar */
+    wrvar(t, (unsigned long)(end > last ? end - last : 0)); fputc(0xFF, t); fputc(0x2F, t); fputc(0, t);
+    fclose(t);
+    FILE *f = fopen(path, "wb");
+    if (!f) { free(buf); return -1; }
+    fwrite("MThd", 1, 4, f); wr32(f, 6); wr16(f, 0); wr16(f, 1); wr16(f, PPQ);
+    fwrite("MTrk", 1, 4, f); wr32(f, (long)blen); fwrite(buf, 1, blen, f);
+    free(buf);
+    return fclose(f);
+}
+
+/* SAVE KIT: the 16 pads as heard, as an MPC drum program (kit_writer.h), and the MIDI that plays them in order */
+static void save_kit(pw_t *s, const song_t *S, const long *cue) {
+    if (!S) { set_text(s, s->status, sizeof s->status, "LOAD A SONG FIRST"); return; }
+    const char *drive = S->drive[0] ? S->drive : s->libs.root_drive;
+    if (!drive[0]) { set_text(s, s->status, sizeof s->status, "NO DRIVE TO SAVE TO"); return; }
+    double bpm = song_bpm(s, S);
+    if ((int)lroundf(s->p[P_TEMPO]) == 1 && s->host_bpm > 20) bpm = s->host_bpm;   /* MATCH MPC: the pads play at its tempo */
+    if (!(bpm > 20)) bpm = 120;
+    char dir[600], clean[100], want[140], name[112], err[96];
+    kit_folder(drive, dir, sizeof dir);
+    clean_name(clean, sizeof clean, S->name);
+    snprintf(want, sizeof want, "%.100s %.0f", clean, bpm);
+    kit_ctx_t k = {s, S, cue};
+    long frames[NPADS];
+    if (kit_write_cb(dir, want, bpm, NPADS, kit_get, kit_done, &k, frames, name, sizeof name, err, sizeof err)) {
+        set_text(s, s->status, sizeof s->status, "%s", err);
+        return;
+    }
+    /* each pad's length in beats: 1 or 2 bars, or (HOLD, TO NEXT CUE) from its cue to the next, at the song's tempo */
+    double beats[NPADS];
+    int pm = (int)lroundf(s->p[P_PLAY_MODE]);
+    double sb = song_bpm(s, S);
+    for (int pad = 0; pad < NPADS; pad++) {
+        if (pm == PLAY_1BAR) beats[pad] = 4;
+        else if (pm == PLAY_2BARS) beats[pad] = 8;
+        else {
+            long start = cue[pad], end = S->frames;
+            for (int j = 0; j < NPADS; j++) if (cue[j] > start && cue[j] < end) end = cue[j];
+            beats[pad] = (double)(end - start) / FS * sb / 60.0;
+            double cap = 16.0 * bpm / 60.0;   /* a saved pad stops at 16 s */
+            if (beats[pad] > cap) beats[pad] = cap;
+        }
+    }
+    char mid[800];
+    snprintf(mid, sizeof mid, "%s/%s.mid", dir, name);
+    write_kit_midi(mid, frames, beats, bpm);
+    const char *shown = strrchr(dir, '/'); shown = shown ? shown + 1 : dir;
+    set_text(s, s->status, sizeof s->status, "SAVED KIT: %.40s  (IN %.30s)", name, shown);
 }
 
 static void scan(pw_t *s) {
@@ -1167,13 +1294,13 @@ static void *worker(void *arg) {
     for (;;) {
         pthread_mutex_lock(&s->mx);
         while (!s->quit && !s->rq_random && !s->rq_prev && !s->rq_next && !s->rq_lib && !s->rq_cues && !s->rq_save &&
-               !s->rq_restore && !s->rq_rescan && !s->rq_pick && !s->garbage)
+               !s->rq_restore && !s->rq_rescan && !s->rq_pick && !s->rq_kit && !s->garbage)
             pthread_cond_wait(&s->cv, &s->mx);
         if (s->quit) { pthread_mutex_unlock(&s->mx); break; }
         int r = s->rq_random, pv = s->rq_prev, nx = s->rq_next, lb = s->rq_lib, cu = s->rq_cues, sv = s->rq_save,
-            rs = s->rq_restore, rsc = s->rq_rescan, pick = s->rq_pick;
+            rs = s->rq_restore, rsc = s->rq_rescan, pick = s->rq_pick, kt = s->rq_kit;
         s->rq_random = s->rq_prev = s->rq_next = s->rq_lib = s->rq_cues = s->rq_save = s->rq_restore = s->rq_rescan = 0;
-        s->rq_pick = 0;
+        s->rq_pick = 0; s->rq_kit = 0;
         char want[512]; snprintf(want, sizeof want, "%s", s->restore_path);
         long rcue[NPADS]; int rn = s->restore_ncue;
         memcpy(rcue, s->restore_cue, sizeof rcue);
@@ -1244,6 +1371,14 @@ static void *worker(void *arg) {
             const song_t *S = s->wsong;
             pthread_mutex_unlock(&s->xfer_mx);
             save_pads(s, S, c);
+        }
+        if (kt) {
+            long c[NPADS];
+            pthread_mutex_lock(&s->xfer_mx);
+            memcpy(c, s->pend_cues ? s->pend_cue : s->cue, sizeof c);
+            const song_t *S = s->wsong;
+            pthread_mutex_unlock(&s->xfer_mx);
+            save_kit(s, S, c);
         }
     }
     return NULL;
@@ -1681,6 +1816,7 @@ static void set_param(void *inst, const char *key, const char *val) {
         if (press) { for (int k = 0; k < NVOICES; k++) release_voice(&s->v[k]); set_text(s, s->status, sizeof s->status, "STOPPED"); }
         return;
     case P_SAVE_PADS: if (press) wake(s, &s->rq_save, 1); return;
+    case P_SAVE_KIT: if (press) wake(s, &s->rq_kit, 1); return;
     case P_LEARN:
         if (press) {
             s->learn_armed = 1;
