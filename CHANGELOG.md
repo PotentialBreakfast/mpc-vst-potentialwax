@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.2 (2026-11)
+- **CPU figure recorded.** Measured on an MPC One with the Open MPC bench: **PASS**, 5.0% of an audio block at the 99th percentile and 8.0% at worst, so it runs comfortably alongside a full project. It shows on the catalog card and in INSTALL.md.
+- Nothing else changed: same sound, controls and saved projects as 1.3.1.
+
 ## 1.3.1 (2026-11)
 - **Ready for MPC OS 3.10.1's plugin folders.** Every download now carries the `plugin.json` that MPC OS 3.10.1 looks for, so the plugin folder can be copied by hand straight into `VST2 Plugins`.
 - **Gen2 MPCs in the Open MPC catalog.** A separate 64-bit download (`-mpc-aarch64.zip`), so the Plugin Manager can install it on Gen2 MPCs, and the catalog's 3.10.1 download (`-mpc-sdk.zip`).

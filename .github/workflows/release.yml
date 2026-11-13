@@ -107,11 +107,12 @@ jobs:
       - name: Package and check
         run: |
           K=$GITHUB_WORKSPACE/kit
+          BENCH=; [ -f vst/bench.txt ] && BENCH="--bench vst/bench.txt"   # the CPU figure measured on a Gen1 MPC
           python3 $K/tools/release.py --so vst/build/potentialwax.so \
             --skin "vst/build/skin/PotentialBreaks - VST - PotentialWax" \
             --entry vst/build/pluginlist-entry.xml --version ${{ steps.t.outputs.version }} \
             --id potentialwax --repo ${{ github.repository }} --license MIT \
-            --about "Melodic sampler: pick or dig a song from your library, 16 cues found for you, matched to your tempo and key." -o $GITHUB_WORKSPACE/dist
+            --about "Melodic sampler: pick or dig a song from your library, 16 cues found for you, matched to your tempo and key." $BENCH -o $GITHUB_WORKSPACE/dist
           python3 $K/tools/catalog_check.py $GITHUB_WORKSPACE/dist/*.zip --catalog
           cd $GITHUB_WORKSPACE/dist && sha256sum *.zip | tee SHA256SUMS
 
