@@ -65,6 +65,7 @@ enum {
     P_RANDOM_TRACK,   /* 1.2.2: RANDOM TRACK moved here; P_RANDOM (parameter 0) is a dead slot, see set_param */
     P_DICE, P_WILD,   /* 1.4.0: ROLL and how wild it rolls (after the LOOK parameter in params.json) */
     P_SAVE_KIT,       /* 1.5.0: the 16 pads as an MPC drum program */
+    P_KEY_LOCK, P_BEAT_CHOP, P_FLIP_REV, P_FLIP_HALF, P_FLIP_FILT,   /* 1.6.0 */
     NP
 };
 #define NROWS 10   /* BROWSE: track names per page */
@@ -82,12 +83,13 @@ static const char *const PKEY[NP] = {
     "mv_bar_b", "mv_beat_b", "mv_16_b", "mv_fine_b", "mv_fine_f", "mv_16_f", "mv_beat_f", "mv_bar_f",
     "snap_cue", "reset_cue",
     "random_track", "dice", "wild", "save_kit",
+    "key_lock", "beat_chop", "flip_rev", "flip_half", "flip_filt",
 };
 static int is_trigger(int i) {
     return i == P_RANDOM || i == P_RANDOM_TRACK || i == P_PREV || i == P_NEXT || i == P_LIB_NEXT || i == P_FIND_CUES || i == P_NUDGE_BACK ||
            i == P_NUDGE_FWD || i == P_PLAY_SONG || i == P_STOP || i == P_SAVE_PADS || i == P_LEARN || i == P_RESCAN ||
            i == P_PAGE_UP || i == P_PAGE_DOWN || i == P_BROWSE_LIB || i == P_TEMPO_X2 || i == P_TEMPO_HALF ||
-           (i >= P_SEL_PREV && i <= P_RESET_CUE) || i == P_DICE || i == P_SAVE_KIT;
+           (i >= P_SEL_PREV && i <= P_RESET_CUE) || i == P_DICE || i == P_SAVE_KIT || i == P_BEAT_CHOP;
 }
 enum { MODE_PADS, MODE_KEYS };
 enum { CUE_PHRASES, CUE_BARS, CUE_HITS };
@@ -463,6 +465,7 @@ typedef struct {
     float *dm; long ndm;        /* mono, averaged over 8 samples (5.5 kHz): what the stretcher lines grains up on */
     int loop_beats;             /* > 0: the file is a cut loop of this many beats (starts on its downbeat) */
     long cue0[NPADS];           /* the cues it arrived with */
+    unsigned char flip0[NPADS]; /* and the pads' FLIP switches (a saved project) */
     char name[160];
     char path[512];
     char drive[256];
@@ -871,7 +874,11 @@ typedef struct {
     int first;
     long played, max_out;
     float gain, env; float rel_step; int fade_in;
+    int flip; float fz[2][2];   /* FLIP: FLIP_REV / HALF / FILT, and the filter's state */
 } voice_t;
+enum { FLIP_REV = 1, FLIP_HALF = 2, FLIP_FILT = 4 };
+#define FLIP_BITS 0xe0u   /* the FLIP switches' bits in ROLL_SENT[] (reported when the selected pad changes) */
+static void filter_init(void);
 
 static inline float smp(const song_t *S, double x, int c) {
     long i = (long)x;
@@ -942,7 +949,8 @@ static void wsola_next(voice_t *v, const song_t *S) {
     memmove(v->acc[1], v->acc[1] + GH, GH * sizeof(float)); memset(v->acc[1] + GH, 0, GH * sizeof(float));
     v->nom += GH * v->t;
     double x = wsola_search(S, v->nom, v->prev + GH * v->p, v->p);
-    if (x < v->start) x = v->start;
+    if (v->p > 0) { if (x < v->start) x = v->start; }
+    else if (x > v->end - 1) x = v->end - 1;   /* REVERSE: grains read backwards from x */
     grain_add(v, S, x, 0);
     v->prev = x;
     v->opos = 0;
@@ -984,7 +992,11 @@ typedef struct {
     int cur_lib, cur_entry;
     song_t *wsong;             /* the newest song (worker side; read-only once made) */
     unsigned seed;
-    unsigned pending;          /* ROLL_SENT[] bits: parameters ROLL changed, for the host to read back */
+    unsigned pending;          /* ROLL_SENT[] bits: parameters the plugin changed, for the host to read back */
+    unsigned char flip[NPADS]; /* each pad's FLIP switches (FLIP_REV | FLIP_HALF | FLIP_FILT) */
+    unsigned char restore_flip[NPADS];
+    unsigned pad_hits;         /* pads played: BEAT CHOP moves on 4 bars if none was played since the last one */
+    unsigned chop_hits; long chop_at; int chopped;
     int saved_lib; char saved_path[512];
     pt_theme_t theme;   /* which look MPC loads next time: not part of the saved state */
 } pw_t;
@@ -1057,6 +1069,7 @@ static void load_entry(pw_t *s, int i, const long *cues, int ncues) {
     if (!detect_loop(S, named)) S->beat0 = find_downbeat(bo, S->nh, S->bpm);
     S->key = detect_key(S);
     if (!cues) s->tshift = 0;   /* a new song starts at the tempo found */
+    if (cues) memcpy(S->flip0, s->restore_flip, NPADS);
     if (cues && ncues == NPADS) {
         for (int k = 0; k < NPADS; k++) S->cue0[k] = cues[k] < 0 ? 0 : cues[k] >= S->frames ? S->frames - 1 : cues[k];
     } else find_cues(S, (int)lroundf(s->p[P_CUE_MODE]), &s->seed, 0, S->cue0);
@@ -1079,6 +1092,7 @@ static void load_entry(pw_t *s, int i, const long *cues, int ncues) {
 /* ---- SAVE PADS: render each pad offline, as heard, to a WAV file ---- */
 static void voice_setup(pw_t *s, voice_t *v, const song_t *S, long start, long end, int semis, int play_mode, int held);
 static int voice_render(pw_t *s, voice_t *v, const song_t *S, float *l, float *r, int n);
+static void voice_flip(voice_t *v, const song_t *S, int flags);
 
 static int write_wav(const char *path, const float *lr, long frames) {
     FILE *f = fopen(path, "wb");
@@ -1112,6 +1126,7 @@ static float *render_pad(pw_t *s, const song_t *S, const long *cue, int pad, lon
     for (int j = 0; j < NPADS; j++) if (cue[j] > start && cue[j] < end) end = cue[j];
     if (pm != PLAY_TO_NEXT) end = S->frames;
     voice_setup(s, v, S, start, end, 0, pm, 0);
+    voice_flip(v, S, s->flip[pad]);
     long n = 0;
     while (n < maxf) {
         int want = maxf - n < 256 ? (int)(maxf - n) : 256;
@@ -1258,6 +1273,7 @@ static void save_kit(pw_t *s, const song_t *S, const long *cue) {
             long start = cue[pad], end = S->frames;
             for (int j = 0; j < NPADS; j++) if (cue[j] > start && cue[j] < end) end = cue[j];
             beats[pad] = (double)(end - start) / FS * sb / 60.0;
+            if (s->flip[pad] & FLIP_HALF) beats[pad] *= 2;   /* half speed: twice as long */
             double cap = 16.0 * bpm / 60.0;   /* a saved pad stops at 16 s */
             if (beats[pad] > cap) beats[pad] = cap;
         }
@@ -1286,6 +1302,34 @@ static void scan(pw_t *s) {
         show_lib(s);
         set_text(s, s->status, sizeof s->status, "%d SONGS IN %d FOLDER%s - TAP RANDOM TRACK", s->libs.n, nroots, nroots == 1 ? "" : "S");
     }
+}
+
+/* BEAT CHOP: the 16 pads one beat apart on the song's beat grid, 4 bars from the bar of the last pad played (each cue
+   nudged onto its hit). Tapped again with no pad played since, it moves on 4 bars; past the end it starts again. */
+static void beat_chop(pw_t *s, const song_t *S, long *cue) {
+    pthread_mutex_lock(&s->xfer_mx);
+    long from = s->cue[s->last_pad];
+    pthread_mutex_unlock(&s->xfer_mx);
+    unsigned hits = s->pad_hits;
+    double beat = S->loop_beats > 0 ? (double)S->frames / S->loop_beats : 60.0 / song_bpm(s, S) * FS;
+    double bar = 4 * beat, b0 = S->loop_beats > 0 ? 0 : S->beat0;
+    while (b0 - bar >= 0) b0 -= bar;   /* the first downbeat */
+    double start;
+    if (s->chopped && hits == s->chop_hits) start = s->chop_at + 4 * bar;
+    else {
+        long k = (long)floor((from + 88 - b0 + beat * 0.5) / bar);
+        start = b0 + (k < 0 ? 0 : k) * bar;
+    }
+    if (start + 16 * beat > S->frames) start = b0;
+    for (int i = 0; i < NPADS; i++) {
+        long p = (long)(start + i * beat) - (i ? 88 : 0);
+        cue[i] = snap_to_hit(S, p < 0 ? 0 : p);
+    }
+    s->chop_at = (long)start; s->chop_hits = hits; s->chopped = 1;
+    int pm = (int)lroundf(s->p[P_PLAY_MODE]);
+    if (pm == PLAY_1BAR || pm == PLAY_2BARS) { s->p[P_PLAY_MODE] = PLAY_TO_NEXT; s->pending |= 2u; }   /* a pad = a beat */
+    int barno = (int)lround((start - b0) / bar) + 1;
+    set_text(s, s->status, sizeof s->status, "BEAT CHOP: BARS %d-%d, A BEAT A PAD", barno, barno + 3);
 }
 
 static void *worker(void *arg) {
@@ -1355,6 +1399,13 @@ static void *worker(void *arg) {
                 idx = first + rel;
             }
             load_entry(s, idx, NULL, 0);
+        } else if (cu == 3 && s->wsong) {
+            long c[NPADS];
+            beat_chop(s, s->wsong, c);
+            pthread_mutex_lock(&s->xfer_mx);
+            memcpy(s->pend_cue, c, sizeof c);
+            s->pend_cues = 1;
+            pthread_mutex_unlock(&s->xfer_mx);
         } else if (cu && s->wsong) {
             long c[NPADS];
             find_cues(s->wsong, (int)lroundf(s->p[P_CUE_MODE]), &s->seed, cu > 1, c);
@@ -1400,6 +1451,7 @@ static const float PDEF[NP] = {
 
 static void *create(const char *data_dir) {
     if (HANN[1] == 0) for (int j = 0; j < GN; j++) HANN[j] = 0.5f - 0.5f * cosf(2 * (float)M_PI * j / GN);   /* periodic: sums to 1 at 50% */
+    filter_init();
     pw_t *s = calloc(1, sizeof *s);
     if (!s) return NULL;
     pt_theme_init(&s->theme, data_dir);
@@ -1475,6 +1527,40 @@ static void voice_setup(pw_t *s, voice_t *v, const song_t *S, long start, long e
     v->fade_in = 44;   /* 1 ms */
 }
 
+/* FLIP a voice just set up: REVERSE plays its region backwards (the stretcher reads its grains backwards too), HALF SPEED
+   plays it at half speed, an octave down, like a record at the wrong speed, FILTER puts a low-pass on it. 1 BAR and
+   2 BARS still stop after 1 or 2 bars of time. */
+static void voice_flip(voice_t *v, const song_t *S, int flags) {
+    v->flip = flags;
+    if (!flags) return;
+    if (flags & FLIP_HALF) { if (v->stretch) { v->p *= 0.5; v->t *= 0.5; } else v->rate *= 0.5; }
+    if (flags & FLIP_REV) {
+        if (v->stretch) { v->p = -v->p; v->t = -v->t; } else v->rate = -v->rate;
+        v->pos = v->end - 1;
+    }
+    if (v->stretch) {
+        memset(v->acc, 0, sizeof v->acc);
+        v->nom = v->prev = (flags & FLIP_REV) ? v->end - 1 : v->start;
+        grain_add(v, S, v->nom, 1);
+        v->opos = 0;
+    }
+    memset(v->fz, 0, sizeof v->fz);
+}
+
+/* FILTER: a 12 dB low-pass at 700 Hz with a little resonance (RBJ biquad, transposed direct form II) */
+static float FB0, FB1, FB2, FA1, FA2;
+static void filter_init(void) {
+    double w = 2 * M_PI * 700.0 / FS, q = 1.1, al = sin(w) / (2 * q), cw = cos(w), a0 = 1 + al;
+    FB0 = (float)((1 - cw) / 2 / a0); FB1 = (float)((1 - cw) / a0); FB2 = FB0;
+    FA1 = (float)(-2 * cw / a0); FA2 = (float)((1 - al) / a0);
+}
+static inline float filt(float x, float *z) {
+    float y = FB0 * x + z[0];
+    z[0] = FB1 * x - FA1 * y + z[1];
+    z[1] = FB2 * x - FA2 * y;
+    return y;
+}
+
 /* render up to n samples; returns how many it made (fewer: the voice ended) */
 static int voice_render(pw_t *s, voice_t *v, const song_t *S, float *l, float *r, int n) {
     (void)s;
@@ -1484,12 +1570,15 @@ static int voice_render(pw_t *s, voice_t *v, const song_t *S, float *l, float *r
         if (v->stretch) {
             if (v->opos >= GH) wsola_next(v, S);
             a = v->acc[0][v->opos]; b = v->acc[1][v->opos]; v->opos++;
-            if (v->prev + GN * v->p >= v->end && !v->stopping) v->stopping = 1;   /* the grains have reached the end */
+            double at = v->prev + v->opos * v->p;   /* about where in the song this output sample is */
+            if (!v->stopping && (v->p > 0 ? at >= v->end : at <= v->start))
+                v->stopping = 1;   /* the region's end (REVERSE: its start) */
         } else {
-            if (v->pos + 1 >= v->end) { if (!v->stopping) v->stopping = 1; }
+            if (v->rate > 0 ? v->pos + 1 >= v->end : v->pos - 1 <= v->start) { if (!v->stopping) v->stopping = 1; }
             a = smp(S, v->pos, 0); b = smp(S, v->pos, 1);
             v->pos += v->rate;
         }
+        if (v->flip & FLIP_FILT) { a = filt(a, v->fz[0]); b = filt(b, v->fz[1]); }
         float g = v->gain;
         if (v->fade_in > 0) { g *= 1.0f - v->fade_in / 44.0f; v->fade_in--; }
         if (v->max_out >= 0 && v->played >= v->max_out && !v->stopping) v->stopping = 1;
@@ -1579,13 +1668,15 @@ static void start_pad(pw_t *s, int pad, int note, int vel) {
     int keys = (int)lroundf(s->p[P_MODE]) == MODE_KEYS;
     int semis = 0, cpad = pad;
     if (keys) { cpad = s->last_pad; semis = note - (int)s->p[P_ROOT_NOTE]; }
-    else s->last_pad = pad;
+    else { if (s->last_pad != pad) s->pending |= FLIP_BITS; s->last_pad = pad; }
+    s->pad_hits++;
     if (!keys && s->p[P_CHOKE] > 0.5f) for (int i = 0; i < NVOICES; i++) if (s->v[i].on) release_voice(&s->v[i]);
     int pm = (int)lroundf(s->p[P_PLAY_MODE]);
     long start = s->cue[cpad], end = S->frames;
     if (pm == PLAY_TO_NEXT) for (int j = 0; j < NPADS; j++) if (s->cue[j] > start && s->cue[j] < end) end = s->cue[j];
     voice_t *v = &s->v[alloc_voice(s)];
     voice_setup(s, v, S, start, end, semis, pm, pm == PLAY_HOLD);
+    voice_flip(v, S, s->flip[cpad]);
     float g = vel / 127.0f;
     v->gain *= 0.25f + 0.75f * g * g;
     v->pad = pad; v->note = note;
@@ -1630,8 +1721,11 @@ static void take_handover(pw_t *s) {
         s->next = NULL;
         memcpy(s->cue, s->cur->cue0, sizeof s->cue);
         memcpy(s->auto_cue, s->cue, sizeof s->cue);
+        memcpy(s->flip, s->cur->flip0, NPADS);   /* a new song starts unflipped (a saved project: as saved) */
         for (int i = 0; i < NVOICES; i++) s->v[i].on = 0;
         s->last_pad = 0;
+        s->chopped = 0;
+        s->pending |= FLIP_BITS;
         wake_worker = s->garbage != NULL;
     }
     if (s->pend_cues && !s->next) {
@@ -1681,7 +1775,7 @@ static void render(void *inst, int16_t *out_lr, int frames) {
 /* ROLL: a random song from this library, cued and played a random way. MILD: phrase or bar cues, pads hold or play
    to the next cue, original key. MEDIUM: any cues and pad length, a new key half the time, pitch +/-2. WILD: any key,
    vinyl or keep-tempo pitching, pitch +/-5. TEMPO is left alone (MATCH MPC keeps it in time). */
-static const int ROLL_SENT[] = {P_CUE_MODE, P_PLAY_MODE, P_KEY, P_PITCH, P_PITCH_MODE};
+static const int ROLL_SENT[] = {P_CUE_MODE, P_PLAY_MODE, P_KEY, P_PITCH, P_PITCH_MODE, P_FLIP_REV, P_FLIP_HALF, P_FLIP_FILT};
 enum { NSENT = sizeof ROLL_SENT / sizeof *ROLL_SENT };
 static unsigned dice_r(pw_t *s) { s->seed = s->seed * 1664525u + 1013904223u; return s->seed >> 8; }
 static int dice_pick(pw_t *s, const int *w, int n) {
@@ -1697,11 +1791,12 @@ static void roll(pw_t *s) {
     static const int PITCH[3] = {0, 2, 5};
     s->p[P_CUE_MODE] = (float)dice_pick(s, CUE_W[w], 3);
     s->p[P_PLAY_MODE] = (float)dice_pick(s, PLAY_W[w], 4);
-    s->p[P_KEY] = (w == 0 || (w == 1 && (dice_r(s) & 1))) ? 0.0f : (float)(1 + dice_r(s) % 12u);
+    if (s->p[P_KEY_LOCK] < 0.5f)   /* KEY LOCK: the key stays */
+        s->p[P_KEY] = (w == 0 || (w == 1 && (dice_r(s) & 1))) ? 0.0f : (float)(1 + dice_r(s) % 12u);
     s->p[P_PITCH] = PITCH[w] ? (float)((int)(dice_r(s) % (unsigned)(2 * PITCH[w] + 1)) - PITCH[w]) : 0.0f;
     if (w == 2) s->p[P_PITCH_MODE] = (float)(dice_r(s) & 1);
     else s->p[P_PITCH_MODE] = PM_KEEP_TEMPO;
-    s->pending = (1u << NSENT) - 1;
+    s->pending |= 0x1fu;   /* the first five of ROLL_SENT */
     if (s->cur) show_info(s, s->cur);
     wake(s, &s->rq_random, 1);
 }
@@ -1754,7 +1849,11 @@ static void set_param(void *inst, const char *key, const char *val) {
             else if (!strcmp(tok, "lib")) s->saved_lib = atoi(v);
             else if (!strcmp(tok, "tsh")) { int t = atoi(v); s->tshift = t < -2 ? -2 : t > 2 ? 2 : t; }
             else if (!strcmp(tok, "pad")) { int p = atoi(v); s->last_pad = p >= 0 && p < NPADS ? p : 0; }
-            else if (!strcmp(tok, "cues")) {
+            else if (!strcmp(tok, "flip")) {
+                char *sv2 = NULL; int k = 0;
+                memset(s->restore_flip, 0, NPADS);
+                for (char *t = strtok_r((char *)v, ",", &sv2); t && k < NPADS; t = strtok_r(NULL, ",", &sv2)) s->restore_flip[k++] = (unsigned char)(atoi(t) & 7);
+            } else if (!strcmp(tok, "cues")) {
                 char *sv2 = NULL;
                 for (char *t = strtok_r((char *)v, ",", &sv2); t && nc < NPADS; t = strtok_r(NULL, ",", &sv2)) c[nc++] = atol(t);
             } else {
@@ -1817,6 +1916,25 @@ static void set_param(void *inst, const char *key, const char *val) {
         return;
     case P_SAVE_PADS: if (press) wake(s, &s->rq_save, 1); return;
     case P_SAVE_KIT: if (press) wake(s, &s->rq_kit, 1); return;
+    case P_BEAT_CHOP: if (press) wake(s, &s->rq_cues, 3); return;
+    case P_KEY_LOCK:
+        s->p[i] = press;
+        if (press && s->p[P_KEY] < 0.5f && s->cur && time(NULL) >= s->quiet_until) {   /* lock to the song you're on */
+            s->p[P_KEY] = (float)(1 + s->cur->key % 12);
+            s->pending |= 4u;
+            show_info(s, s->cur);
+        }
+        if (time(NULL) >= s->quiet_until)
+            set_text(s, s->status, sizeof s->status, press ? "KEY LOCK ON: EVERY SONG PLAYS IN THIS KEY" : "KEY LOCK OFF");
+        return;
+    case P_FLIP_REV: case P_FLIP_HALF: case P_FLIP_FILT: {
+        if (time(NULL) < s->quiet_until) return;   /* a project opening: the saved flips come with its state */
+        int bit = i == P_FLIP_REV ? FLIP_REV : i == P_FLIP_HALF ? FLIP_HALF : FLIP_FILT, pad = s->last_pad;
+        if (press) s->flip[pad] |= bit; else s->flip[pad] &= ~bit;
+        static const char *const NAME[] = {"", "REVERSE", "HALF SPEED", "", "FILTER"};
+        set_text(s, s->status, sizeof s->status, "PAD %d: %s %s", pad + 1, NAME[bit], press ? "ON" : "OFF");
+        return;
+    }
     case P_LEARN:
         if (press) {
             s->learn_armed = 1;
@@ -1828,6 +1946,7 @@ static void set_param(void *inst, const char *key, const char *val) {
     case P_SEL_PREV: case P_SEL_NEXT:
         if (press) {
             s->last_pad = (s->last_pad + (i == P_SEL_NEXT ? 1 : NPADS - 1)) % NPADS;
+            s->pending |= FLIP_BITS;
             set_text(s, s->status, sizeof s->status, "PAD %d SELECTED", s->last_pad + 1);
         }
         return;
@@ -1839,6 +1958,7 @@ static void set_param(void *inst, const char *key, const char *val) {
             for (int k = 0; k < NVOICES; k++) if (s->v[k].on) release_voice(&s->v[k]);
             voice_t *vv = &s->v[alloc_voice(s)];
             voice_setup(s, vv, S, start, end, 0, PLAY_TO_NEXT, 0);
+            voice_flip(vv, S, s->flip[s->last_pad]);
             vv->pad = s->last_pad;
         }
         return;
@@ -1948,13 +2068,15 @@ static int get_param(void *inst, const char *key, char *buf, int buf_len) {
     if (!strcmp(key, "state")) {
         int n = 0;
         static const int keep[] = {P_WAVE_VIEW, P_MODE, P_CUE_MODE, P_PLAY_MODE, P_TEMPO, P_KEY, P_PITCH, P_PITCH_MODE, P_CHOKE, P_VOLUME,
-                                   P_RELEASE, P_BASE_NOTE, P_ROOT_NOTE, P_WILD};
+                                   P_RELEASE, P_BASE_NOTE, P_ROOT_NOTE, P_WILD, P_KEY_LOCK};
         for (size_t k = 0; k < sizeof keep / sizeof *keep && n < buf_len; k++)
             n += snprintf(buf + n, buf_len - n, "%s=%g;", PKEY[keep[k]], (double)s->p[keep[k]]);
         pthread_mutex_lock(&s->mx);
         if (n < buf_len) n += snprintf(buf + n, buf_len - n, "tsh=%d;lib=%d;file=%s;pad=%d;cues=", s->tshift, s->cur_lib, s->saved_path, s->last_pad);
         pthread_mutex_unlock(&s->mx);
         for (int k = 0; k < NPADS && n < buf_len; k++) n += snprintf(buf + n, buf_len - n, "%ld%s", s->cue[k], k < NPADS - 1 ? "," : "");
+        if (n < buf_len) n += snprintf(buf + n, buf_len - n, ";flip=");
+        for (int k = 0; k < NPADS && n < buf_len; k++) n += snprintf(buf + n, buf_len - n, "%d%s", s->flip[k], k < NPADS - 1 ? "," : "");
         return n < buf_len ? n : buf_len - 1;
     }
     if (key[0] == 'w' && key[1] == '_' && isdigit((unsigned char)key[2]) && isdigit((unsigned char)key[3]) && !key[4]) {
@@ -1997,6 +2119,8 @@ static int get_param(void *inst, const char *key, char *buf, int buf_len) {
     int n;
     if (txt) n = snprintf(buf, buf_len, "%s", txt);
     else if (is_trigger(i)) n = snprintf(buf, buf_len, "0");
+    else if (i == P_FLIP_REV || i == P_FLIP_HALF || i == P_FLIP_FILT)
+        n = snprintf(buf, buf_len, "%d", (s->flip[s->last_pad] & (i == P_FLIP_REV ? FLIP_REV : i == P_FLIP_HALF ? FLIP_HALF : FLIP_FILT)) != 0);
     else n = snprintf(buf, buf_len, "%g", (double)s->p[i]);
     pthread_mutex_unlock(&s->text_mx);
     return n;

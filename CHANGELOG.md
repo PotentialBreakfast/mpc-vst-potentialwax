@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.6.0 (2026-11)
+- **FLIP the selected pad**, on the WAVE page: **REVERSE** plays it backwards, **HALF SPEED** plays it at half speed, an octave down, like a record at the wrong speed, and **FILTER** puts a low-pass on it. Mix them as you like; each pad keeps its own, your project remembers them, and SAVE KIT and SAVE PADS save the pads flipped. A new song starts with every pad unflipped.
+- **BEAT CHOP** (CUES panel): the 16 pads one beat apart on the song's beat grid, 4 bars from the bar of the last pad you played. Tap it again without playing a pad to move on 4 bars.
+- **KEY LOCK** (MATCH panel): one key for everything you dig. Switching it on with KEY on Original takes the key of the song you're on; every song you load then plays in that key, and ROLL leaves the key alone.
+- Fixed: with the pitch shifter in use (KEY, PITCH or MATCH MPC with Keep Tempo), a pad stopped about 46 ms before its end. It now plays right up to the next cue.
+- Five parameters were added at the end of the list; saved projects open as before.
+
 ## 1.5.0 (2026-11)
 - **SAVE KIT**: one tap saves the 16 pads as a real **MPC drum program**: each pad as a WAV, as you hear it (at your tempo, key and pitch), on pads A01-A16, with a MIDI file beside it that plays the 16 pads in order on the beat. Load it like any program, and keep it after the plugin is gone. It goes to `PotentialWax/Kits` on the song's drive, or to the folder named on the first line of `PotentialWax/kit-folder.txt` there, or of PotentialBreaks' `kit-folder.txt`, so both plugins can save to the same programs folder. Needs MPC OS 3.10.1 or later (the program format it writes).
 - A pad set to **HOLD** is saved as **TO NEXT CUE** (a sample can't know how long you'd hold it). Each saved pad is at most 16 seconds.

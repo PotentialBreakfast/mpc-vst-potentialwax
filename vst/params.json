@@ -968,6 +968,48 @@
    "name": "Save Kit",
    "type": "trigger",
    "momentary": true
+  },
+  {
+   "key": "key_lock",
+   "name": "Key Lock",
+   "options": [
+    "Off",
+    "On"
+   ],
+   "default": 0
+  },
+  {
+   "key": "beat_chop",
+   "name": "Beat Chop",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "flip_rev",
+   "name": "Pad Reverse",
+   "options": [
+    "Off",
+    "On"
+   ],
+   "default": 0
+  },
+  {
+   "key": "flip_half",
+   "name": "Pad Half Speed",
+   "options": [
+    "Off",
+    "On"
+   ],
+   "default": 0
+  },
+  {
+   "key": "flip_filt",
+   "name": "Pad Filter",
+   "options": [
+    "Off",
+    "On"
+   ],
+   "default": 0
   }
  ]
 }

@@ -18,12 +18,14 @@ Free and open source (MIT), made by **PotentialBreaks**. It runs inside the MPC 
 - **RANDOM TRACK** digs out a song from your library. **PREV** and **NEXT** step through them, **LIBRARY** switches folders, and the **BROWSE** page lists 10 songs at a time so you can tap the one you want.
 - **Analysis:** tempo (75–150 BPM, or the "92bpm" in the file name), the downbeat and the key are worked out when a song loads.
 - **16 cues, found for you.** **CUES ON** chooses where they go: **Phrases** (4-bar phrase starts), **Bars**, or **Hits**. **FIND CUES** rolls a new set, and **NUDGE < >** moves the last pad's cue.
+- **BEAT CHOP** puts the 16 pads one beat apart on the song's beat grid: 4 bars, starting at the bar of the last pad you played. Tap it again without playing a pad to move on 4 bars. With PAD PLAYS on 1 or 2 bars it switches to To Next Cue, so each pad plays its beat.
 - **MODE:**
   - **Pads:** each pad plays from its cue. **PAD PLAYS** sets how long: Hold, To Next Cue, 1 Bar or 2 Bars.
   - **Keys:** the last pad you played, spread chromatically over the keyboard from the ROOT note.
 - **MATCH:**
   - **TEMPO:** Original, or Match MPC.
   - **KEY:** Original, or any key from C to B (moves the shortest way, −6 to +5 semitones). **PITCH** adds ±12 on top.
+  - **KEY LOCK:** keeps one key for everything you dig. Switching it on with KEY on Original takes the key of the song you're on; after that every song you load plays in that key, and ROLL leaves the key alone. (The MPC doesn't tell plugins the project's key, so KEY is where you set it.)
   - **PITCHING:** **Keep Tempo** (time-stretch, so the speed stays put) or **Vinyl** (speed and pitch move together, like a turntable).
 - **Cut loops are recognised.** A file that's a whole number of bars (1, 2, 4, 8, 16 or 32) gets its exact tempo from its length, starts its bar 1 at the start of the file, and its cues go on its beat grid (INFO shows "LOOP 4 BARS"). Cues are nudged onto the actual hit.
 - **÷2 / ×2** halve or double the tempo it found, for half-time and double-time samples. Matching, pad lengths and NUDGE follow it, and your project remembers it.
@@ -38,6 +40,7 @@ Free and open source (MIT), made by **PotentialBreaks**. It runs inside the MPC 
 
 - **See every cue:** the song's waveform with all 16 cue points as amber lines. The selected pad's cue glows brighter, and a white line follows playback.
 - **Playing a pad selects it**, so you see straight away where it starts. **< PAD / PAD >** pick one without playing.
+- **FLIP it:** **REVERSE** plays the selected pad backwards, **HALF SPEED** plays it at half speed (an octave down, like a record at the wrong speed), and **FILTER** puts a low-pass on it. Each pad keeps its own, your project remembers them, and SAVE KIT saves the pads flipped.
 - **VIEW:** the whole song, or zoom in to 16, 4 or 1 bar around the selected cue.
 - **Move the selected cue** by a bar, a beat, a 1/16 note or a tiny step (5 ms), backwards or forwards. **PLAY PAD** to hear it.
 - **SNAP TO HIT** moves the cue onto the nearest real hit; **RESET CUE** puts it back where it was found.
