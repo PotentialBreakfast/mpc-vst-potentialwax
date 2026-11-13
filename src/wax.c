@@ -63,6 +63,7 @@ enum {
     P_MV_BAR_B, P_MV_BEAT_B, P_MV_16_B, P_MV_FINE_B, P_MV_FINE_F, P_MV_16_F, P_MV_BEAT_F, P_MV_BAR_F,
     P_SNAP_CUE, P_RESET_CUE,
     P_RANDOM_TRACK,   /* 1.2.2: RANDOM TRACK moved here; P_RANDOM (parameter 0) is a dead slot, see set_param */
+    P_DICE, P_WILD,   /* 1.4.0: ROLL and how wild it rolls (after the LOOK parameter in params.json) */
     NP
 };
 #define NROWS 10   /* BROWSE: track names per page */
@@ -79,13 +80,13 @@ static const char *const PKEY[NP] = {
     "wave_view", "wave_info", "sel_prev", "sel_next", "cue_play",
     "mv_bar_b", "mv_beat_b", "mv_16_b", "mv_fine_b", "mv_fine_f", "mv_16_f", "mv_beat_f", "mv_bar_f",
     "snap_cue", "reset_cue",
-    "random_track",
+    "random_track", "dice", "wild",
 };
 static int is_trigger(int i) {
     return i == P_RANDOM || i == P_RANDOM_TRACK || i == P_PREV || i == P_NEXT || i == P_LIB_NEXT || i == P_FIND_CUES || i == P_NUDGE_BACK ||
            i == P_NUDGE_FWD || i == P_PLAY_SONG || i == P_STOP || i == P_SAVE_PADS || i == P_LEARN || i == P_RESCAN ||
            i == P_PAGE_UP || i == P_PAGE_DOWN || i == P_BROWSE_LIB || i == P_TEMPO_X2 || i == P_TEMPO_HALF ||
-           (i >= P_SEL_PREV && i <= P_RESET_CUE);
+           (i >= P_SEL_PREV && i <= P_RESET_CUE) || i == P_DICE;
 }
 enum { MODE_PADS, MODE_KEYS };
 enum { CUE_PHRASES, CUE_BARS, CUE_HITS };
@@ -982,6 +983,7 @@ typedef struct {
     int cur_lib, cur_entry;
     song_t *wsong;             /* the newest song (worker side; read-only once made) */
     unsigned seed;
+    unsigned pending;          /* ROLL_SENT[] bits: parameters ROLL changed, for the host to read back */
     int saved_lib; char saved_path[512];
     pt_theme_t theme;   /* which look MPC loads next time: not part of the saved state */
 } pw_t;
@@ -1267,6 +1269,7 @@ static void *create(const char *data_dir) {
     if (!s) return NULL;
     pt_theme_init(&s->theme, data_dir);
     for (int i = 0; i < NP; i++) s->p[i] = PDEF[i];
+    s->p[P_WILD] = 1;   /* MEDIUM */
     s->last_note = -1;
     s->saved_lib = -1;
     s->cur_entry = -1;
@@ -1540,6 +1543,41 @@ static void render(void *inst, int16_t *out_lr, int frames) {
 }
 
 /* ---------------- parameters ---------------- */
+/* ROLL: a random song from this library, cued and played a random way. MILD: phrase or bar cues, pads hold or play
+   to the next cue, original key. MEDIUM: any cues and pad length, a new key half the time, pitch +/-2. WILD: any key,
+   vinyl or keep-tempo pitching, pitch +/-5. TEMPO is left alone (MATCH MPC keeps it in time). */
+static const int ROLL_SENT[] = {P_CUE_MODE, P_PLAY_MODE, P_KEY, P_PITCH, P_PITCH_MODE};
+enum { NSENT = sizeof ROLL_SENT / sizeof *ROLL_SENT };
+static unsigned dice_r(pw_t *s) { s->seed = s->seed * 1664525u + 1013904223u; return s->seed >> 8; }
+static int dice_pick(pw_t *s, const int *w, int n) {
+    int t = 0; for (int i = 0; i < n; i++) t += w[i];
+    int r = (int)(dice_r(s) % (unsigned)t);
+    for (int i = 0; i < n; i++) { if (r < w[i]) return i; r -= w[i]; }
+    return n - 1;
+}
+static void roll(pw_t *s) {
+    int w = (int)lroundf(s->p[P_WILD]); if (w < 0) w = 0; if (w > 2) w = 2;
+    static const int CUE_W[3][3] = {{2, 3, 0}, {1, 1, 1}, {1, 1, 1}};
+    static const int PLAY_W[3][4] = {{2, 2, 0, 0}, {1, 1, 1, 1}, {1, 1, 1, 1}};
+    static const int PITCH[3] = {0, 2, 5};
+    s->p[P_CUE_MODE] = (float)dice_pick(s, CUE_W[w], 3);
+    s->p[P_PLAY_MODE] = (float)dice_pick(s, PLAY_W[w], 4);
+    s->p[P_KEY] = (w == 0 || (w == 1 && (dice_r(s) & 1))) ? 0.0f : (float)(1 + dice_r(s) % 12u);
+    s->p[P_PITCH] = PITCH[w] ? (float)((int)(dice_r(s) % (unsigned)(2 * PITCH[w] + 1)) - PITCH[w]) : 0.0f;
+    if (w == 2) s->p[P_PITCH_MODE] = (float)(dice_r(s) & 1);
+    else s->p[P_PITCH_MODE] = PM_KEEP_TEMPO;
+    s->pending = (1u << NSENT) - 1;
+    if (s->cur) show_info(s, s->cur);
+    wake(s, &s->rq_random, 1);
+}
+
+int mpc_engine_changed(void *inst, char *key, int len) {
+    pw_t *s = inst;
+    for (int k = 0; k < NSENT; k++)
+        if (s->pending & (1u << k)) { s->pending &= ~(1u << k); snprintf(key, len, "%s", PKEY[ROLL_SENT[k]]); return 1; }
+    return 0;
+}
+
 static int find(const char *key) {
     for (int i = 0; i < NP; i++) if (!strcmp(key, PKEY[i])) return i;
     return -1;
@@ -1622,6 +1660,8 @@ static void set_param(void *inst, const char *key, const char *val) {
      * Kept in the table so saved projects keep their parameter indices. */
     case P_RANDOM: return;
     case P_RANDOM_TRACK: if (press) wake(s, &s->rq_random, 1); return;
+    case P_DICE: if (press) roll(s); return;
+    case P_WILD: s->p[i] = v < 0 ? 0 : v > 2 ? 2 : (float)lroundf(v); return;
     case P_PREV: if (press) wake(s, &s->rq_prev, 1); return;
     case P_NEXT: if (press) wake(s, &s->rq_next, 1); return;
     case P_LIB_NEXT: if (press) wake(s, &s->rq_lib, 1); return;
@@ -1772,7 +1812,7 @@ static int get_param(void *inst, const char *key, char *buf, int buf_len) {
     if (!strcmp(key, "state")) {
         int n = 0;
         static const int keep[] = {P_WAVE_VIEW, P_MODE, P_CUE_MODE, P_PLAY_MODE, P_TEMPO, P_KEY, P_PITCH, P_PITCH_MODE, P_CHOKE, P_VOLUME,
-                                   P_RELEASE, P_BASE_NOTE, P_ROOT_NOTE};
+                                   P_RELEASE, P_BASE_NOTE, P_ROOT_NOTE, P_WILD};
         for (size_t k = 0; k < sizeof keep / sizeof *keep && n < buf_len; k++)
             n += snprintf(buf + n, buf_len - n, "%s=%g;", PKEY[keep[k]], (double)s->p[keep[k]]);
         pthread_mutex_lock(&s->mx);

@@ -14,6 +14,7 @@ Free and open source (MIT), made by **PotentialBreaks**. It runs inside the MPC 
 
 ## What it does
 
+- **ROLL** digs out a random song and plays it a random way (cues, pad length, key, pitch). **MILD**, **MEDIUM** or **WILD** under it sets how far it goes.
 - **RANDOM TRACK** digs out a song from your library. **PREV** and **NEXT** step through them, **LIBRARY** switches folders, and the **BROWSE** page lists 10 songs at a time so you can tap the one you want.
 - **Analysis:** tempo (75–150 BPM, or the "92bpm" in the file name), the downbeat and the key are worked out when a song loads.
 - **16 cues, found for you.** **CUES ON** chooses where they go: **Phrases** (4-bar phrase starts), **Bars**, or **Hits**. **FIND CUES** rolls a new set, and **NUDGE < >** moves the last pad's cue.

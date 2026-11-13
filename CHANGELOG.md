@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.0 (2026-11)
+- **ROLL**: one tap for a random song played a random way. **MILD** puts the cues on phrases or bars, in the original key. **MEDIUM** may also cue on the hits, change what a pad plays, move to a new key and nudge the pitch. **WILD** picks any key, can switch to vinyl pitching and moves the pitch up to 5 semitones. TEMPO is left alone, so MATCH MPC keeps it in time. RANDOM TRACK still just picks a song.
+- The DIG panel is rearranged to fit ROLL. Two parameters were added at the end of the list (Roll, Roll Wildness); saved projects open as before.
+
 ## 1.3.2 (2026-11)
 - **CPU figure recorded.** Measured on an MPC One with the Open MPC bench: **PASS**, 5.0% of an audio block at the 99th percentile and 8.0% at worst, so it runs comfortably alongside a full project. It shows on the catalog card and in INSTALL.md.
 - Nothing else changed: same sound, controls and saved projects as 1.3.1.

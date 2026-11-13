@@ -946,6 +946,22 @@
     "Colour Block"
    ],
    "default": 0
+  },
+  {
+   "key": "dice",
+   "name": "Roll",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "wild",
+   "name": "Roll Wildness",
+   "options": [
+    "MILD",
+    "MEDIUM",
+    "WILD"
+   ],
+   "default": 1
   }
  ]
 }
