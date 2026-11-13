@@ -14,8 +14,8 @@ permissions:
   contents: write
 
 env:
-  KIT_REPO: https://github.com/sd88me/mpc-vst-plugins
-  KIT_REF: bf1054ce08460cf42b10f96985e73141d64a71af   # pinned: the version the releases were tested with
+  KIT_REPO: https://github.com/open-mpc/mpc-vst-plugins
+  KIT_REF: 52c1fb072966d7de77e97dd9eec0544548b042dc   # pinned: Open MPC kit for MPC OS 3.10.1 (plugin.json, Gen2 and SDK zips)
   ZIG_VERSION: 0.17.0
   SDK_REPO: https://github.com/inmusic-software/mpc-plugin-builder-sdk   # Akai's plugin SDK: converter + checker
   SDK_REF: febd2ca5bd9eb16c4a412837196e145566bc981b
@@ -115,7 +115,7 @@ jobs:
           python3 $K/tools/catalog_check.py $GITHUB_WORKSPACE/dist/*.zip --catalog
           cd $GITHUB_WORKSPACE/dist && sha256sum *.zip | tee SHA256SUMS
 
-      - name: Akai plugin folder format (MPC OS 3.10.1+, 32 and 64-bit)
+      - name: Gen2 build and the MPC OS 3.10.1+ folder formats (Akai, and the catalog's SDK zip)
         run: |
           K=$GITHUB_WORKSPACE/kit
           git clone -q "$SDK_REPO" sdk && git -C sdk checkout -q "$SDK_REF"
@@ -125,6 +125,16 @@ jobs:
             -o vst/build/potentialwax-arm64.so
           python3 shared/akai/akai_pack.py --sdk sdk --zip dist/PotentialWax-${{ steps.t.outputs.version }}-mpc-armv7.zip \
             --so64 vst/build/potentialwax-arm64.so --out dist --category "Sampler"
+          # Gen2 (aarch64) per-build zip and the Akai SDK-format zip, both as the Open MPC catalog expects them
+          mkdir -p vst/build/aarch64 && cp vst/build/potentialwax-arm64.so vst/build/aarch64/potentialwax.so
+          python3 $K/tools/release.py --so vst/build/aarch64/potentialwax.so \
+            --skin "vst/build/skin/PotentialBreaks - VST - PotentialWax" \
+            --entry vst/build/pluginlist-entry.xml --version ${{ steps.t.outputs.version }} \
+            --id potentialwax --repo ${{ github.repository }} --license MIT \
+            --about "Melodic sampler: pick or dig a song from your library, 16 cues found for you, matched to your tempo and key." -o $GITHUB_WORKSPACE/dist
+          V=${{ steps.t.outputs.version }}
+          python3 $K/tools/catalog_check.py dist/PotentialWax-$V-mpc-aarch64.zip --catalog
+          python3 $K/tools/sdk_zip.py dist/PotentialWax-$V-mpc-sdk.zip dist/PotentialWax-$V-mpc-armv7.zip dist/PotentialWax-$V-mpc-aarch64.zip
           cd dist && sha256sum *.zip | tee SHA256SUMS
 
       - name: Publish the release
