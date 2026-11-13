@@ -53,5 +53,5 @@ jobs:
           git add -A vst/vst.json README.md CHANGELOG.md .github/release-notes
           git commit -q -m "$V: new version"
           git push -q origin HEAD:main
-          gh workflow run release.yml --ref main
+          gh api -X POST "repos/${{ github.repository }}/actions/workflows/release.yml/dispatches" -f ref=main
           echo "Released v$V: the Release workflow is building it now."
