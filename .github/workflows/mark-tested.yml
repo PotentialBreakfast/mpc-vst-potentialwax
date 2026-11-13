@@ -1,0 +1,53 @@
+# MARK TESTED: adds a tested.json entry for a version that works on your MPC, and (with a bench result) the CPU figure
+# the next release shows. MPC TOOLS' Plugins tab runs this for you after "Test & record"; or run it by hand from the
+# Actions tab (Mark tested > Run workflow).
+name: Mark tested
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (empty: the latest release)'
+        type: string
+        default: ''
+      device:
+        description: 'Device'
+        type: string
+        default: 'MPC One'
+      firmware:
+        description: 'Firmware'
+        type: string
+        default: 'MPC OS 3.10.1'
+      bench:
+        description: "The bench's JSON line (optional)"
+        type: string
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency: mark-tested
+
+jobs:
+  mark:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Record it
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IN_VERSION: ${{ inputs.version }}
+          IN_DEVICE: ${{ inputs.device }}
+          IN_FIRMWARE: ${{ inputs.firmware }}
+          IN_BENCH: ${{ inputs.bench }}
+        run: |
+          V="$IN_VERSION"
+          [ -n "$V" ] || V=$(gh release view --json tagName -q .tagName)
+          what=$(python3 .github/scripts/mark_tested.py "$V" "$IN_DEVICE" "$IN_FIRMWARE" "$IN_BENCH")
+          echo "$what"
+          [ "$what" = "nothing new" ] && exit 0
+          git config user.name "PotentialBreakfast"
+          git config user.email "PotentialBreakfast@users.noreply.github.com"
+          git add tested.json vst/bench.txt 2>/dev/null || git add tested.json
+          git commit -q -m "tested.json: ${V#v} works on an $IN_DEVICE ($IN_FIRMWARE)"
+          git push -q origin HEAD:main

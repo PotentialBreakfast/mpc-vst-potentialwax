@@ -1,0 +1,57 @@
+# NEW VERSION: one button. Bumps the version, writes the release notes (what you type, or the changes since the last
+# release), the CHANGELOG entry and the README's version line, pushes them, and starts the Release workflow.
+# Run it from the Actions tab (New version > Run workflow), or from MPC TOOLS' Plugins tab.
+name: New version
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'patch (fixes), minor (new features) or major'
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+      notes:
+        description: "What's new, one change per line (empty: the changes since the last release)"
+        type: string
+        default: ''
+      dry_run:
+        description: 'Only show what it would do'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency: new-version
+
+jobs:
+  bump:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Bump, notes, changelog
+        id: b
+        env:
+          NOTES: ${{ inputs.notes }}
+        run: |
+          V=$(python3 .github/scripts/new_version.py "${{ inputs.bump }}")
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          git --no-pager diff --stat
+          echo "---- notes"; cat ".github/release-notes/v$V.md"
+      - name: Push and release
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V=${{ steps.b.outputs.version }}
+          git config user.name "PotentialBreakfast"
+          git config user.email "PotentialBreakfast@users.noreply.github.com"
+          git add -A vst/vst.json README.md CHANGELOG.md .github/release-notes
+          git commit -q -m "$V: new version"
+          git push -q origin HEAD:main
+          gh workflow run release.yml --ref main
+          echo "Released v$V: the Release workflow is building it now."
