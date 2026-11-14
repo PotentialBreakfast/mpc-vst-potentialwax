@@ -4,7 +4,7 @@
 
 ![PotentialWax's page on the MPC](docs/images/potentialwax.png)
 
-*Instrument plugin · MPC OS 3.x · Gen1 and Gen2 · v1.6.0*
+*Instrument plugin · MPC OS 3.x · Gen1 and Gen2 · v1.7.0*
 
 Inspired by the way Serato Sample works on computers. Not affiliated with Serato.
 
@@ -33,6 +33,8 @@ Free and open source (MIT), made by **PotentialBreaks**. It runs inside the MPC 
 - **SAVE PADS** writes the 16 chops as you hear them to WAV files, ready to load into a drum program.
 - **PLAY SONG** / **STOP** play the whole song. **CHOKE**, **RELEASE** and **LEARN** are on the SETUP page.
 - Your project remembers the song, the cues and every setting.
+
+**MANUAL page:** the manual is on the MPC's screen too. Tap **MANUAL**, then the page buttons along the top. The full [PotentialSuite manual](https://github.com/PotentialBreakfast/potential-plugins/blob/main/MANUAL.md) covers every plugin, the FX chains and a developer reference.
 
 ## The WAVE page
 

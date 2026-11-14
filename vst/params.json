@@ -1010,6 +1010,7 @@
     "On"
    ],
    "default": 0
-  }
- ]
+  },
+  {"key": "manual_page", "name": "Manual Page", "options": ["START", "CONTROLS", "MATCH", "WAVE", "SAVING", "SUITE", "HELP"], "default": 0}
+]
 }

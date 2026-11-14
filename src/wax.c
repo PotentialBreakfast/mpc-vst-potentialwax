@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include "engine.h"
 #include "../shared/looks/potential_theme.h"   /* the LOOK switch (parameter "theme") */
+#include "../shared/potential_manual.h"        /* the MANUAL tab's page */
 
 #define DR_WAV_IMPLEMENTATION
 #define DR_WAV_NO_STDIO_WIDE
@@ -999,6 +1000,7 @@ typedef struct {
     unsigned chop_hits; long chop_at; int chopped;
     int saved_lib; char saved_path[512];
     pt_theme_t theme;   /* which look MPC loads next time: not part of the saved state */
+    pm_manual_t manual; /* the MANUAL tab's page: not part of the sound or the saved state */
 } pw_t;
 
 static double song_bpm(const pw_t *s, const song_t *S) { return S->bpm * ldexp(1.0, s->tshift); }   /* the tempo as the user hears it */
@@ -1832,6 +1834,7 @@ static void nudge(pw_t *s, int dir) {
 static void set_param(void *inst, const char *key, const char *val) {
     pw_t *s = inst;
     if (pt_theme_set(&s->theme, key, val)) return;
+    if (pm_set(&s->manual, key, val)) return;
     if (!strcmp(key, "lfo_bpm")) { s->host_bpm = (float)atof(val); return; }
     if (!strcmp(key, "state")) {   /* "mode=0;...;lib=3;file=/media/...;cues=1,2,...;pad=4" */
         s->quiet_until = time(NULL) + 3;
@@ -2031,6 +2034,7 @@ static void set_param(void *inst, const char *key, const char *val) {
 static int get_param(void *inst, const char *key, char *buf, int buf_len) {
     pw_t *s = inst;
     { int pt_n = pt_theme_get(&s->theme, key, buf, buf_len); if (pt_n) return pt_n; }
+    { int pm_n = pm_get(&s->manual, key, buf, buf_len); if (pm_n) return pm_n; }
     if (!strcmp(key, "display_rev")) {
         pthread_mutex_lock(&s->text_mx);
         int n = snprintf(buf, buf_len, "%u", s->display_rev);

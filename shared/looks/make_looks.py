@@ -13,6 +13,9 @@ vst/skin/looks/plugin.json gives the plugin its own colour in each look and name
 
 ("wave": "skin/wave/strip.png" also redraws that waveform filmstrip in each look; `picture` lines get their SVGs recoloured.)
 
+vst/manual.txt, when there is one, becomes a MANUAL tab: pages of text with a row of page buttons (parameter
+"manual_page", one option per page; see manual_pages()). shared/potential_manual.h holds the page in the engine.
+
 A SETTINGS tab with the LOOK selector (parameter "theme") is added to every look. The three skins are then built and
 merged by build_looks.py; the plugin switches between them by itself (shared/potential_theme.h).
 """
@@ -166,6 +169,82 @@ def settings_tab(look, own, bgfile):
     ]
 
 
+MANUAL_WRAP = 112   # characters of body text that fit a manual line
+MANUAL_LINES = 13   # lines that fit a manual page under its heading
+
+
+def manual_pages(path):
+    """vst/manual.txt -> [(button label, [(kind, text)])]. A line "= LABEL" starts a page (LABEL is its button, and
+    one option of the parameter "manual_page", in order); "# text" is a heading; "- text" a bullet; an empty line a
+    gap; anything else body text. Long lines are wrapped. A page that does not fit is an error (shorten it)."""
+    pages = []
+    for raw in open(path, encoding="utf-8"):
+        l = raw.rstrip()
+        if l.startswith("= "):
+            pages.append((l[2:].strip(), []))
+            continue
+        if not pages:
+            if l.strip():
+                raise SystemExit("manual.txt: text before the first '= PAGE' line")
+            continue
+        rows = pages[-1][1]
+        if l.startswith("# "):
+            rows.append(("head", l[2:].strip()))
+        elif not l.strip():
+            if rows and rows[-1][0] != "gap":
+                rows.append(("gap", ""))
+        else:
+            bullet = l.startswith("- ")
+            words, line, first = (l[2:] if bullet else l).split(), "", True
+            width = MANUAL_WRAP - 3 if bullet else MANUAL_WRAP
+            for w in words + [None]:
+                if w is None or len(line) + len(w) + 1 > width:
+                    if line:
+                        rows.append(("bullet" if bullet and first else "more" if bullet else "body", line))
+                        first = False
+                    line = w or ""
+                else:
+                    line = (line + " " + w).strip()
+    for name, rows in pages:
+        while rows and rows[-1][0] == "gap":
+            rows.pop()
+        if '"' in "".join(t for _, t in rows):
+            raise SystemExit('manual.txt: page %s: a double quote cannot be drawn (use single quotes)' % name)
+        used = sum(0.5 if k == "gap" else 1.35 if k == "head" else 1 for k, _ in rows)
+        if used > MANUAL_LINES + 1.35:
+            raise SystemExit("manual.txt: page %s is %.1f lines too long" % (name, used - MANUAL_LINES - 1.35))
+    return pages
+
+
+def manual_tab(look, own, bgfile, pages):
+    """The MANUAL tab: a row of page buttons (parameter "manual_page") and each page's text, shown for its option."""
+    n = len(pages)
+    sw = min(190, (1180 - 8 * (n - 1)) // n)
+    out = ["[tab MANUAL]", "art file=%s" % bgfile,
+           'frame x=14 y=100 w=1252 h=604 title="MANUAL"',
+           'enum_h cx=640 cy=166 label="" key=manual_page sw=%d sh=56 rows=1' % sw]
+    for i, (name, rows) in enumerate(pages):
+        y = 236.0
+        for kind, text in rows:
+            if kind == "gap":
+                y += 16
+                continue
+            if kind == "head":
+                out.append('text cx=60 cy=%d label="%s" size=1.9 weight=700 align=left color=%s when=manual_page:%d'
+                           % (y + 4, text.upper(), own["title"], i))
+                y += 44
+                continue
+            x = 60 if kind == "body" else 84
+            if kind == "bullet":
+                out.append('text cx=62 cy=%d label="-" size=1.45 weight=700 case=none align=left color=%s when=manual_page:%d'
+                           % (y, own["title"], i))
+            out.append('text cx=%d cy=%d label="%s" size=1.45 weight=600 case=none align=left color=%s when=manual_page:%d'
+                       % (x, y, text, own["dim"], i))
+            y += 32
+    out.append('qlinks "MANUAL" = -')
+    return out
+
+
 def make(vst):
     base = os.path.join(vst, "layout.base.conf")
     ldir = os.path.join(vst, "skin", "looks")
@@ -235,6 +314,9 @@ def make(vst):
         if tab == "SETUP" and not placed:
             out += look_block(own)
             placed = True
+        manual = os.path.join(vst, "manual.txt")
+        if os.path.exists(manual):
+            out += manual_tab(look, own, bgfile, manual_pages(manual))
         if not placed:
             out += settings_tab(look, own, bgfile)
         open(os.path.join(vst, FILES[look]), "w").write("\n".join(out) + "\n")

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.0 (2026-11)
+- **MANUAL page.** The plugin's manual is now on the MPC's screen: tap **MANUAL**, then the page buttons along the top (what it does, the controls, how it works with the other PotentialSuite plugins, and good-to-know notes). The full PotentialSuite manual is on the [PotentialSuite page](https://github.com/PotentialBreakfast/potential-plugins).
+- One parameter was added at the end of the list (Manual Page); saved projects open as before. Sound and controls are unchanged.
+
 ## 1.6.0 (2026-11)
 - **FLIP the selected pad**, on the WAVE page: **REVERSE** plays it backwards, **HALF SPEED** plays it at half speed, an octave down, like a record at the wrong speed, and **FILTER** puts a low-pass on it. Mix them as you like; each pad keeps its own, your project remembers them, and SAVE KIT and SAVE PADS save the pads flipped. A new song starts with every pad unflipped.
 - **BEAT CHOP** (CUES panel): the 16 pads one beat apart on the song's beat grid, 4 bars from the bar of the last pad you played. Tap it again without playing a pad to move on 4 bars.

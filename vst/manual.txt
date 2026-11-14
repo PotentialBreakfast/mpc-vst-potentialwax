@@ -1,0 +1,72 @@
+= START
+# PotentialWax: dig, flip, play
+A melodic sampler. Pick a song from your own library, or let it dig one out, and it finds 16 cue points, works out the tempo and key, and matches them to your project.
+
+- Load it as a plugin instrument (a plugin program). The pads play from the cues.
+- It needs a folder of songs: put them in a folder called MELODIC LIBRARY at the top of an SD card, USB drive or SSD.
+- MP3, WAV and FLAC. After adding songs, tap RESCAN on the BROWSE page.
+- Tap RANDOM TRACK, or ROLL for a random song played a random way.
+
+The full PotentialSuite manual: github.com/PotentialBreakfast/potential-plugins
+
+= CONTROLS
+# WAX page
+- RANDOM TRACK digs out a song. PREV and NEXT step through them. LIBRARY switches folders. BROWSE lists 10 at a time.
+- CUES ON: where the 16 cues go. Phrases (4-bar phrase starts), Bars or Hits. FIND CUES rolls a new set.
+- NUDGE moves the last pad's cue.
+- BEAT CHOP puts the 16 pads one beat apart: 4 bars, from the bar of the last pad you played.
+- MODE: Pads (each pad plays from its cue) or Keys (the last pad, spread over the keyboard from the ROOT note).
+- PAD PLAYS: Hold, To Next Cue, 1 Bar or 2 Bars.
+- /2 and x2 halve or double the tempo it found, for half-time and double-time samples.
+- PLAY SONG and STOP play the whole song.
+
+= MATCH
+# Tempo and key
+- TEMPO: Original, or Match MPC.
+- KEY: Original, or any key from C to B. It moves the shortest way. PITCH adds up to 12 semitones each way on top.
+- KEY LOCK keeps one key for everything you dig. Switch it on with KEY on Original to take the key of the song you are on.
+- PITCHING: Keep Tempo (time-stretch, the speed stays put) or Vinyl (speed and pitch move together, like a turntable).
+- The MPC does not tell plugins the project's key, so KEY is where you set it.
+- A file that is a whole number of bars (1, 2, 4, 8, 16 or 32) is recognised as a cut loop and gets its exact tempo.
+- Tempo is found between 75 and 150 BPM, or read from a name like 92bpm.
+
+= WAVE
+# WAVE page
+- The song's waveform with all 16 cues. Playing a pad selects it. PAD arrows pick one without playing.
+- FLIP: REVERSE plays the selected pad backwards, HALF SPEED an octave down, FILTER puts a low-pass on it. Each pad keeps its own.
+- VIEW: the whole song, or 16, 4 or 1 bar around the selected cue.
+- Move the selected cue by a bar, a beat, a 1/16 note or a tiny step (5 ms). PLAY PAD to hear it.
+- SNAP TO HIT moves the cue onto the nearest real hit. RESET CUE puts it back where it was found.
+
+= SAVING
+# Saving your work
+- Your project remembers the song, the cues and every setting.
+- SAVE KIT writes an MPC drum program: each pad as a WAV, as you hear it (tempo, key, pitch and flips), on pads A01 to A16, with a MIDI file that plays the pads in order. MPC OS 3.10.1 or later.
+- SAVE PADS writes the 16 chops as WAV files.
+- Kits go to PotentialWax/Kits on the song's drive, pads to the PotentialWax folder there.
+
+# Where it finds your songs
+- A folder called MELODIC LIBRARY at the top of any drive.
+- Any folder at the top of a drive with melodic, wax, flip or songs in its name.
+- Folders you list in PotentialWax/folders.txt on that drive, one per line.
+
+= SUITE
+# With the other plugins
+- Dusty Loop chain on the Wax track (soul, jazz and library loops): Bleed > Patina > Grit, the same preset name in each.
+- 90s Stab chain for chopped horns, keys and vocal stabs: Grit > Punch > Bleed > Patina.
+- PotentialCrates finds and plays records. Record what you like into the MPC, save it to your MELODIC LIBRARY folder, RESCAN, and flip it here.
+- PotentialWarp as the last insert for half time and tape stops on the chops.
+
+Effects go on the track's inserts. SAVE KIT saves the pads as you hear them in the plugin, before the track's effects.
+
+= HELP
+# Good to know
+- If pad 1 does not play the first cue, use LEARN on the SETUP page, then hit the pad you want as pad 1.
+- Only the first 6 minutes of a song are used. Files shorter than about 2 seconds are skipped.
+- Tempo, key and cues are a best guess. Putting the BPM in the file name fixes the tempo.
+- Keep Tempo sounds more stretched on big tempo or key changes. Vinyl has no stretch artefacts.
+- 8 voices, 44.1 kHz playback. CHOKE and RELEASE are on the SETUP page.
+- Q-Links: PITCH, VOLUME, TEMPO, KEY, CUES ON, PAD PLAYS, MODE and PITCHING.
+- Looks: Print Plate, Night Rack or Colour Block, on the SETUP page.
+
+Ideas, bugs and criticism are all welcome: github.com/PotentialBreakfast/mpc-vst-potentialwax
