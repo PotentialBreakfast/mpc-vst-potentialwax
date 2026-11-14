@@ -970,7 +970,9 @@ typedef struct {
     int tshift;                /* x2 / /2 taps on the found tempo: -2..2 (half time, double time) */
     long auto_cue[NPADS];      /* the cues as found: RESET CUE goes back to these */
     int ph_voice;              /* WAVE page: the voice whose position is the playhead */
-    int ph_col; long ph_tick;  /* playhead column shown, and a counter so it's checked every ~50 ms */
+    int ph_col; long ph_tick;  /* playhead column shown (-1 none), and a counter so it's checked every ~23 ms */
+    int ph_lo, ph_hi;          /* the columns already played by that voice (lit), -1 none */
+    uint64_t ph_dirty;         /* WAVE columns whose picture the playhead changed: told to the host (mpc_engine_changed) */
     int learn_armed, last_note;
     voice_t v[NVOICES];
     song_t *cur;
@@ -1456,6 +1458,7 @@ static void *create(const char *data_dir) {
     filter_init();
     pw_t *s = calloc(1, sizeof *s);
     if (!s) return NULL;
+    s->ph_col = s->ph_lo = s->ph_hi = -1;   /* no playhead yet */
     pt_theme_init(&s->theme, data_dir);
     for (int i = 0; i < NP; i++) s->p[i] = PDEF[i];
     s->p[P_WILD] = 1;   /* MEDIUM */
@@ -1606,7 +1609,7 @@ static int alloc_voice_(pw_t *s) {
 }
 static int alloc_voice(pw_t *s) { int k = alloc_voice_(s); s->ph_voice = k; return k; }   /* the newest voice is the playhead */
 
-/* ---- WAVE page: the window shown, and each column's picture (height 0-8 x marker: none, cue, selected cue, playhead) ---- */
+/* ---- WAVE page: the window shown, and each column's picture (height 0-8 x marker: none, cue, selected cue, playhead, played) ---- */
 static void wave_window(const pw_t *s, const song_t *S, long *v0, long *v1) {
     int view = (int)lroundf(s->p[P_WAVE_VIEW]);
     long span = S->frames;
@@ -1631,6 +1634,17 @@ static int wave_col_of(long x, long v0, long v1) {
     if (x < v0 || x >= v1) return -1;
     return (int)((double)(x - v0) * WCOLS / (double)(v1 - v0));
 }
+/* a column's marker: 0 none, 1 a cue, 2 the selected pad's cue, 3 the playhead, 4 already played (lit in the plugin's
+ * colour, so you see the run from the cue to the playhead). The playhead and the played run are the ones render()
+ * last worked out (ph_col, ph_lo..ph_hi). */
+static int wave_mark(const pw_t *s, int col, long v0, long v1) {
+    int mark = 0;
+    for (int k = 0; k < NPADS; k++) if (wave_col_of(s->cue[k], v0, v1) == col) { if (k == s->last_pad) return 2; mark = 1; }
+    if (col == s->ph_col) return 3;
+    if (mark) return mark;
+    if (s->ph_lo >= 0 && col >= s->ph_lo && col <= s->ph_hi) return 4;
+    return 0;
+}
 static int wave_frame(const pw_t *s, int col) {
     const song_t *S = s->cur;
     if (!S || !S->wpk) return 0;
@@ -1645,10 +1659,7 @@ static int wave_frame(const pw_t *s, int col) {
         h = (int)ceilf(8.0f * powf(pk / S->wmax, 0.75f));
         h = h < 1 ? 1 : h > 8 ? 8 : h;
     }
-    int mark = 0;
-    for (int k = 0; k < NPADS; k++) if (wave_col_of(s->cue[k], v0, v1) == col) { if (k == s->last_pad) { mark = 2; break; } mark = 1; }
-    if (mark != 2 && wave_col_of(playhead(s), v0, v1) == col) mark = 3;
-    return mark * 9 + h;
+    return wave_mark(s, col, v0, v1) * 9 + h;
 }
 static void wave_move(pw_t *s, long by) {
     song_t *S = s->cur;
@@ -1743,11 +1754,34 @@ static void render(void *inst, int16_t *out_lr, int frames) {
     pw_t *s = inst;
     take_handover(s);
     song_t *S = s->cur;
-    if (S && (s->ph_tick += frames) >= 5512) {   /* about 8 times a second: has the playhead moved to another column? */
+    /* The playhead (1.7.1): checked about 43 times a second. When it moves to another column, only the columns whose
+     * picture changed are reported (mpc_engine_changed -> the host repaints those meters). It used to bump display_rev
+     * 8 times a second, which made MPC rebuild the whole screen each time, and on the MPC the playhead did not move. */
+    if ((s->ph_tick += frames) >= 1024) {
         s->ph_tick = 0;
-        long v0, v1; wave_window(s, S, &v0, &v1);
-        int col = wave_col_of(playhead(s), v0, v1);
-        if (col != s->ph_col) { s->ph_col = col; __atomic_add_fetch(&s->display_rev, 1, __ATOMIC_RELAXED); }
+        int col = -1, lo = -1, hi = -1;
+        if (S) {
+            long v0, v1; wave_window(s, S, &v0, &v1);
+            long x = playhead(s);
+            col = wave_col_of(x, v0, v1);
+            if (col >= 0) {                                  /* the played run: from where the voice started to here */
+                const voice_t *v = &s->v[s->ph_voice];
+                int back = v->stretch ? v->t < 0 : v->rate < 0;
+                long from = back ? v->end - 1 : v->start;
+                int fc = from < v0 ? 0 : from >= v1 ? WCOLS - 1 : wave_col_of(from, v0, v1);
+                lo = fc < col ? fc : col; hi = fc < col ? col : fc;
+            }
+        }
+        if (col != s->ph_col || lo != s->ph_lo || hi != s->ph_hi) {
+            uint64_t d = 0;
+            for (int c = 0; c < WCOLS; c++) {
+                int was = c == s->ph_col ? 3 : (s->ph_lo >= 0 && c >= s->ph_lo && c <= s->ph_hi) ? 4 : 0;
+                int now = c == col ? 3 : (lo >= 0 && c >= lo && c <= hi) ? 4 : 0;
+                if (was != now) d |= 1ull << c;
+            }
+            s->ph_col = col; s->ph_lo = lo; s->ph_hi = hi;
+            __atomic_or_fetch(&s->ph_dirty, d, __ATOMIC_RELEASE);
+        }
     }
     float mixl[128], mixr[128], l[128], r[128];
     while (frames > 0) {
@@ -1807,6 +1841,13 @@ int mpc_engine_changed(void *inst, char *key, int len) {
     pw_t *s = inst;
     for (int k = 0; k < NSENT; k++)
         if (s->pending & (1u << k)) { s->pending &= ~(1u << k); snprintf(key, len, "%s", PKEY[ROLL_SENT[k]]); return 1; }
+    uint64_t d = __atomic_load_n(&s->ph_dirty, __ATOMIC_ACQUIRE);
+    if (d) {                                   /* a WAVE column the playhead changed */
+        int c = __builtin_ctzll(d);
+        __atomic_and_fetch(&s->ph_dirty, ~(1ull << c), __ATOMIC_ACQ_REL);
+        snprintf(key, len, "w_%02d", c);
+        return 1;
+    }
     return 0;
 }
 
@@ -2087,7 +2128,7 @@ static int get_param(void *inst, const char *key, char *buf, int buf_len) {
         int col = (key[2] - '0') * 10 + (key[3] - '0');   /* a WAVE column: its picture, as a value 0..1 (36 frames) */
         if (col >= WCOLS) return 0;
         int f = wave_frame(s, col);
-        double v = f >= 35 ? 1.0 : (f + 0.25) / 35.0;
+        double v = f >= 44 ? 1.0 : (f + 0.25) / 44.0;   /* 45 frames: 9 heights x 5 markers */
         return snprintf(buf, buf_len, "%.5f", v);
     }
     if (!strcmp(key, "wave_info")) {
