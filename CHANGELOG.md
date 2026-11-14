@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.8.0 (2026-11-14)
+- **The WAVE page's playhead moves.** It is checked about 40 times a second and only the two columns it moves between are redrawn, so it glides along the waveform. Before, every step made the MPC rebuild the whole screen, and on an MPC One the playhead stayed put.
+- **A new look for the playing sound:** the part already played lights up in PotentialWax's colour, from the cue to the playhead, and the playhead is a bright line with a notch at the top and bottom.
+- Sound, controls and saved projects are unchanged.
+
 ## 1.7.0 (2026-11)
 - **MANUAL page.** The plugin's manual is now on the MPC's screen: tap **MANUAL**, then the page buttons along the top (what it does, the controls, how it works with the other PotentialSuite plugins, and good-to-know notes). The full PotentialSuite manual is on the [PotentialSuite page](https://github.com/PotentialBreakfast/potential-plugins).
 - One parameter was added at the end of the list (Manual Page); saved projects open as before. Sound and controls are unchanged.

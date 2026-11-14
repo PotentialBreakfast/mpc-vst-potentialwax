@@ -84,18 +84,20 @@ def recolour_svg(src, own):
 
 
 def wave_strip(own, path):
-    """The waveform column pictures (18 x 200, 36 of them stacked): 9 bar heights x plain / cue / selected cue / playing now."""
+    """The waveform column pictures (18 x 200, 45 of them stacked): 9 bar heights x plain / cue / selected cue / playhead /
+    already played. The played run is the plugin's colour, so you see the sound move from the cue to the playhead; the
+    playhead is a bright line with a notch at the top and bottom."""
     from PIL import Image, ImageDraw
     k, w, h = 4, 18, 200
     rgb = lambda c: tuple(int(c[i:i + 2], 16) for i in (0, 2, 4)) + (255,)
-    strip = Image.new("RGBA", (w, h * 36))
-    for mark in range(4):
+    strip = Image.new("RGBA", (w, h * 45))
+    for mark in range(5):
         for lvl in range(9):
             im = Image.new("RGBA", (w * k, h * k), rgb(own["w_selbg"] if mark == 2 else own["m_bg"]))
             d = ImageDraw.Draw(im)
-            bar = rgb(own["w_sel"] if mark == 2 else own["w_bar"])
+            bar = rgb(own["w_sel"] if mark == 2 else own["w_cue"] if mark in (3, 4) else own["w_bar"])
             if lvl == 0:
-                d.rectangle([3 * k, 100 * k - 2, 15 * k, 100 * k + 1], fill=rgb(own["m_off"]))
+                d.rectangle([3 * k, 100 * k - 2, 15 * k, 100 * k + 1], fill=rgb(own["w_cue"] if mark == 4 else own["m_off"]))
             else:
                 half = max(5, lvl * 95 // 8)
                 d.rounded_rectangle([3 * k, (100 - half) * k, 15 * k - 1, (100 + half) * k], radius=3 * k, fill=bar)
@@ -104,7 +106,12 @@ def wave_strip(own, path):
                 d.rectangle([0, 0, 3 * k - 1, h * k], fill=line)
                 d.polygon([(0, 0), (11 * k, 0), (0, 11 * k)], fill=line)
             elif mark == 3:
-                d.rectangle([7 * k, 0, 10 * k - 1, h * k], fill=(255, 255, 255, 255))
+                white = (255, 255, 255, 255)
+                if own.get("glow"):
+                    d.rectangle([5 * k, 0, 13 * k - 1, h * k], fill=rgb(own["w_cue"])[:3] + (110,))
+                d.rectangle([7 * k, 0, 11 * k - 1, h * k], fill=white)
+                d.polygon([(3 * k, 0), (15 * k, 0), (9 * k, 8 * k)], fill=white)
+                d.polygon([(3 * k, h * k), (15 * k, h * k), (9 * k, h * k - 8 * k)], fill=white)
             strip.paste(im.resize((w, h), Image.LANCZOS), (0, (mark * 9 + lvl) * h))
     strip.save(path)
 
