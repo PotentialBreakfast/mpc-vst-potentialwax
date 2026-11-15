@@ -46,8 +46,10 @@
 #define MIN_FILE_SEC 1.8       /* shorter files are one-shots: skipped (a 1-bar loop at 130 BPM is 1.85 s) */
 #define MAX_FILE_SEC 360.0     /* never use more than the first 6 minutes of a file (memory: 63 MB) */
 #define HOP 441                /* 10 ms analysis hop */
-#define WPK 256                /* WAVE page: samples per stored peak */
-#define WCOLS 64               /* WAVE page: waveform columns */
+#define WPK 128                /* WAVE page: samples per stored peak (1.9.0: finer, for 128 columns) */
+#define WCOLS 128              /* WAVE page: waveform columns (1.9.0: 128 thin ones, were 64) */
+#define WH 12                  /* WAVE page: bar heights 0..11 (1.9.0, were 9; 60 pictures x 200 px stays under the 12288 px strip limit) */
+#define WFRAMES (5 * WH)       /* x 5 markers: none, cue, selected cue, playhead, played */
 #define DM 8                   /* decimation of the stretcher's search copy */
 
 /* ---------------- parameters (same order as vst/params.json) ---------------- */
@@ -59,7 +61,7 @@ enum {
     P_NUDGE_BACK, P_NUDGE_FWD, P_PLAY_SONG, P_STOP, P_SAVE_PADS, P_LEARN, P_BASE_NOTE, P_ROOT_NOTE, P_RESCAN,
     P_PICK1, P_PICK10 = P_PICK1 + 9, P_PAGE_UP, P_PAGE_DOWN, P_BROWSE_INFO, P_BROWSE_LIB,
     P_TEMPO_X2, P_TEMPO_HALF,
-    P_W0, P_W63 = P_W0 + 63,                       /* WAVE page: 64 waveform columns (display only) */
+    P_W0, P_W63 = P_W0 + 63,                       /* WAVE page: waveform columns 1-64 (display only; 65-128 at the end) */
     P_WAVE_VIEW, P_WAVE_INFO, P_SEL_PREV, P_SEL_NEXT, P_CUE_PLAY,
     P_MV_BAR_B, P_MV_BEAT_B, P_MV_16_B, P_MV_FINE_B, P_MV_FINE_F, P_MV_16_F, P_MV_BEAT_F, P_MV_BAR_F,
     P_SNAP_CUE, P_RESET_CUE,
@@ -67,6 +69,7 @@ enum {
     P_DICE, P_WILD,   /* 1.4.0: ROLL and how wild it rolls (after the LOOK parameter in params.json) */
     P_SAVE_KIT,       /* 1.5.0: the 16 pads as an MPC drum program */
     P_KEY_LOCK, P_BEAT_CHOP, P_FLIP_REV, P_FLIP_HALF, P_FLIP_FILT,   /* 1.6.0 */
+    P_W64, P_W127 = P_W64 + 63,   /* 1.9.0: WAVE columns 65-128 */
     NP
 };
 #define NROWS 10   /* BROWSE: track names per page */
@@ -85,6 +88,7 @@ static const char *const PKEY[NP] = {
     "snap_cue", "reset_cue",
     "random_track", "dice", "wild", "save_kit",
     "key_lock", "beat_chop", "flip_rev", "flip_half", "flip_filt",
+    "w_64", "w_65", "w_66", "w_67", "w_68", "w_69", "w_70", "w_71", "w_72", "w_73", "w_74", "w_75", "w_76", "w_77", "w_78", "w_79", "w_80", "w_81", "w_82", "w_83", "w_84", "w_85", "w_86", "w_87", "w_88", "w_89", "w_90", "w_91", "w_92", "w_93", "w_94", "w_95", "w_96", "w_97", "w_98", "w_99", "w_100", "w_101", "w_102", "w_103", "w_104", "w_105", "w_106", "w_107", "w_108", "w_109", "w_110", "w_111", "w_112", "w_113", "w_114", "w_115", "w_116", "w_117", "w_118", "w_119", "w_120", "w_121", "w_122", "w_123", "w_124", "w_125", "w_126", "w_127",
 };
 static int is_trigger(int i) {
     return i == P_RANDOM || i == P_RANDOM_TRACK || i == P_PREV || i == P_NEXT || i == P_LIB_NEXT || i == P_FIND_CUES || i == P_NUDGE_BACK ||
@@ -972,7 +976,7 @@ typedef struct {
     int ph_voice;              /* WAVE page: the voice whose position is the playhead */
     int ph_col; long ph_tick;  /* playhead column shown (-1 none), and a counter so it's checked every ~23 ms */
     int ph_lo, ph_hi;          /* the columns already played by that voice (lit), -1 none */
-    uint64_t ph_dirty;         /* WAVE columns whose picture the playhead changed: told to the host (mpc_engine_changed) */
+    uint64_t ph_dirty[2];      /* WAVE columns whose picture the playhead changed: told to the host (mpc_engine_changed) */
     int learn_armed, last_note;
     voice_t v[NVOICES];
     song_t *cur;
@@ -1656,10 +1660,10 @@ static int wave_frame(const pw_t *s, int col) {
     for (long i = ia; i < ib && i < S->nwpk; i++) if (S->wpk[i] > pk) pk = S->wpk[i];
     int h = 0;
     if (pk > 0.002f && S->wmax > 0) {   /* relative to the loudest moment, gently curved so quiet parts still show */
-        h = (int)ceilf(8.0f * powf(pk / S->wmax, 0.75f));
-        h = h < 1 ? 1 : h > 8 ? 8 : h;
+        h = (int)ceilf((WH - 1) * powf(pk / S->wmax, 0.7f));
+        h = h < 1 ? 1 : h > WH - 1 ? WH - 1 : h;
     }
-    return wave_mark(s, col, v0, v1) * 9 + h;
+    return wave_mark(s, col, v0, v1) * WH + h;
 }
 static void wave_move(pw_t *s, long by) {
     song_t *S = s->cur;
@@ -1773,14 +1777,14 @@ static void render(void *inst, int16_t *out_lr, int frames) {
             }
         }
         if (col != s->ph_col || lo != s->ph_lo || hi != s->ph_hi) {
-            uint64_t d = 0;
+            uint64_t d[2] = {0, 0};
             for (int c = 0; c < WCOLS; c++) {
                 int was = c == s->ph_col ? 3 : (s->ph_lo >= 0 && c >= s->ph_lo && c <= s->ph_hi) ? 4 : 0;
                 int now = c == col ? 3 : (lo >= 0 && c >= lo && c <= hi) ? 4 : 0;
-                if (was != now) d |= 1ull << c;
+                if (was != now) d[c >> 6] |= 1ull << (c & 63);
             }
             s->ph_col = col; s->ph_lo = lo; s->ph_hi = hi;
-            __atomic_or_fetch(&s->ph_dirty, d, __ATOMIC_RELEASE);
+            for (int w = 0; w < 2; w++) if (d[w]) __atomic_or_fetch(&s->ph_dirty[w], d[w], __ATOMIC_RELEASE);
         }
     }
     float mixl[128], mixr[128], l[128], r[128];
@@ -1841,12 +1845,14 @@ int mpc_engine_changed(void *inst, char *key, int len) {
     pw_t *s = inst;
     for (int k = 0; k < NSENT; k++)
         if (s->pending & (1u << k)) { s->pending &= ~(1u << k); snprintf(key, len, "%s", PKEY[ROLL_SENT[k]]); return 1; }
-    uint64_t d = __atomic_load_n(&s->ph_dirty, __ATOMIC_ACQUIRE);
-    if (d) {                                   /* a WAVE column the playhead changed */
-        int c = __builtin_ctzll(d);
-        __atomic_and_fetch(&s->ph_dirty, ~(1ull << c), __ATOMIC_ACQ_REL);
-        snprintf(key, len, "w_%02d", c);
-        return 1;
+    for (int w = 0; w < 2; w++) {
+        uint64_t d = __atomic_load_n(&s->ph_dirty[w], __ATOMIC_ACQUIRE);
+        if (d) {                               /* a WAVE column the playhead changed */
+            int c = __builtin_ctzll(d);
+            __atomic_and_fetch(&s->ph_dirty[w], ~(1ull << c), __ATOMIC_ACQ_REL);
+            snprintf(key, len, "w_%02d", w * 64 + c);
+            return 1;
+        }
     }
     return 0;
 }
@@ -2067,7 +2073,7 @@ static void set_param(void *inst, const char *key, const char *val) {
         if ((int)lroundf(v) == MODE_KEYS) set_text(s, s->status, sizeof s->status, "KEYS: PAD %d ACROSS THE KEYBOARD", s->last_pad + 1);
         else set_text(s, s->status, sizeof s->status, "PADS: 16 CUES");
         return;
-    case P_W0 ... P_W63: return;   /* display only */
+    case P_W0 ... P_W63: case P_W64 ... P_W127: return;   /* display only */
     default: s->p[i] = v; return;
     }
 }
@@ -2124,11 +2130,12 @@ static int get_param(void *inst, const char *key, char *buf, int buf_len) {
         for (int k = 0; k < NPADS && n < buf_len; k++) n += snprintf(buf + n, buf_len - n, "%d%s", s->flip[k], k < NPADS - 1 ? "," : "");
         return n < buf_len ? n : buf_len - 1;
     }
-    if (key[0] == 'w' && key[1] == '_' && isdigit((unsigned char)key[2]) && isdigit((unsigned char)key[3]) && !key[4]) {
-        int col = (key[2] - '0') * 10 + (key[3] - '0');   /* a WAVE column: its picture, as a value 0..1 (36 frames) */
+    if (key[0] == 'w' && key[1] == '_' && isdigit((unsigned char)key[2]) && isdigit((unsigned char)key[3])
+        && (!key[4] || (isdigit((unsigned char)key[4]) && !key[5]))) {
+        int col = atoi(key + 2);                         /* a WAVE column: its picture, as a value 0..1 */
         if (col >= WCOLS) return 0;
         int f = wave_frame(s, col);
-        double v = f >= 44 ? 1.0 : (f + 0.25) / 44.0;   /* 45 frames: 9 heights x 5 markers */
+        double v = f >= WFRAMES - 1 ? 1.0 : (f + 0.25) / (WFRAMES - 1);   /* 60 frames: 12 heights x 5 markers */
         return snprintf(buf, buf_len, "%.5f", v);
     }
     if (!strcmp(key, "wave_info")) {

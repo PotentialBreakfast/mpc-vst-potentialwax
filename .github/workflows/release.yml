@@ -87,7 +87,7 @@ jobs:
           P=.
           mkdir -p $P/vst/build
           gcc -O2 -I kit/tools/vendor/force-shadow/tools -o $P/vst/build/shadow_art kit/tools/shadow_art.c -lm
-          python3 shared/looks/build_looks.py $P/vst kit   # the three looks, merged into one switchable skin
+          python3 shared/looks/build_looks.py $P/vst kit   # the four looks, merged into one switchable skin
           bash kit/tools/test_port.sh $P/vst/vst.json
           # the LOOK switch, on a copy of the built plugin folder
           gcc -fsanitize=address,undefined -g -O1 -w -std=gnu11 -ffast-math -I src -I vst/build -I kit/wrapper \

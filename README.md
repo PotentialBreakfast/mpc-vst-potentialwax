@@ -4,7 +4,7 @@
 
 ![PotentialWax's page on the MPC](docs/images/potentialwax.png)
 
-*Instrument plugin · MPC OS 3.x · Gen1 and Gen2 · v1.8.0*
+*Instrument plugin · MPC OS 3.x · Gen1 and Gen2 · v1.9.0*
 
 Inspired by the way Serato Sample works on computers. Not affiliated with Serato.
 
@@ -58,9 +58,9 @@ You don't have to type any paths. It looks in three places:
 
 Every sub-folder becomes a **library**. After adding songs, tap **RESCAN** (on the BROWSE page). **MP3, WAV and FLAC** files are supported.
 
-## Three looks
+## Four looks
 
-PotentialWax comes in three looks: **Print Plate** (the default), **Night Rack** and **Colour Block**. Open the **SETUP** page and tap one of the big LOOK keys. The new look shows the next time the plugin loads: take it off the track and add it again, or load your project again. Your choice is kept on your MPC for every project. The sound and the controls are the same in all three.
+PotentialWax comes in four looks: **Print Plate** (the default), **Night Rack**, **Colour Block** and **Vintage** (a late-80s drum machine: warm grey panel, cream keys, an amber display). Open the **SETUP** page and tap one of the big LOOK keys. The new look shows the next time the plugin loads: take it off the track and add it again, or load your project again. Your choice is kept on your MPC for every project. The sound and the controls are the same in all four.
 
 ## Limitations
 

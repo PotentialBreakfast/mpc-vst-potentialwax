@@ -24,9 +24,10 @@ import os
 import re
 import sys
 
-LOOKS = ("print", "rack", "block")
-TITLES = {"print": "Print Plate", "rack": "Night Rack", "block": "Colour Block"}
-FILES = {"print": "layout.conf", "rack": "layout.rack.conf", "block": "layout.block.conf"}
+# Print Plate first (the default), then Night Rack, Colour Block and Vintage (from Potential1200).
+LOOKS = ("print", "rack", "block", "vintage")
+TITLES = {"print": "Print Plate", "rack": "Night Rack", "block": "Colour Block", "vintage": "Vintage"}
+FILES = {"print": "layout.conf", "rack": "layout.rack.conf", "block": "layout.block.conf", "vintage": "layout.vintage.conf"}
 
 
 def mix(a, b, t):
@@ -39,7 +40,15 @@ def palette(look, a, lit):
     the colours its own lines and pictures use: title (headline text), dim (quiet captions), disp (live text in a
     display window), key / primary (a button's own fill), cool (a second caption colour), m_* (meter pictures),
     w_* (the waveform strip)."""
-    if look == "print":
+    if look == "vintage":   # a late-80s drum machine: warm grey panel, beige keys, an amber display, the plugin's colour for what is selected
+        t = dict(bg="bdb6a6", panel="bdb6a6", line="2a2723", ink="2a2723", ink_dim="3a352e", ink_faint="6f675a",
+                 accent=a, accent_hi="2a2723", knob_face="2a2723", knob_ring="2a2723", knob_dot="f2a33a",
+                 seg_active="2a2723", seg_inactive="e6dcc6", seg_active_tx="f2a33a", btn_text="2a2723",
+                 btn_bg="e6dcc6", btn_on=a, tile_on=a, lcd="171411", box="b1aa99")
+        own = dict(title="2a2723", dim="3a352e", disp="f2a33a", key="e6dcc6", plate="bdb6a6", cool="3a352e", primary=a,
+                   m_bg="171411", m_off="2a2420", m_on="f2a33a", m_hi="ffd08a", m_cool="c98a35", m_mid="f2a33a",
+                   w_bar="c98a35", w_cue="e0612f", w_selbg="2a2420", w_sel="f2a33a", glow=False)
+    elif look == "print":
         t = dict(bg="d9d3c7", panel="d9d3c7", line="1b1a18", ink="1b1a18", ink_dim="3d3a34", ink_faint="8a8374",
                  accent=a, accent_hi="1b1a18", knob_face="1b1a18", knob_ring="1b1a18", knob_dot="efe8d8",
                  seg_active="1b1a18", seg_inactive="e7e1d5", seg_active_tx="efe8d8", btn_text="1b1a18",
@@ -84,40 +93,46 @@ def recolour_svg(src, own):
 
 
 def wave_strip(own, path):
-    """The waveform column pictures (18 x 200, 45 of them stacked): 9 bar heights x plain / cue / selected cue / playhead /
-    already played. The played run is the plugin's colour, so you see the sound move from the cue to the playhead; the
-    playhead is a bright line with a notch at the top and bottom."""
+    """The waveform column pictures (9 x 200, 60 of them stacked, under the 12288 px strip limit; PotentialWax 1.9.0: 128 thin columns): 12 bar heights x
+    plain / cue / selected cue / playhead / already played. The played run is the plugin's colour, so you see the sound
+    move from the cue to the playhead; the playhead is a bright line with a notch at the top and bottom."""
     from PIL import Image, ImageDraw
-    k, w, h = 4, 18, 200
+    k, w, h, H = 4, 9, 200, 12
     rgb = lambda c: tuple(int(c[i:i + 2], 16) for i in (0, 2, 4)) + (255,)
-    strip = Image.new("RGBA", (w, h * 45))
+    strip = Image.new("RGBA", (w, h * 5 * H))
     for mark in range(5):
-        for lvl in range(9):
+        for lvl in range(H):
             im = Image.new("RGBA", (w * k, h * k), rgb(own["w_selbg"] if mark == 2 else own["m_bg"]))
             d = ImageDraw.Draw(im)
             bar = rgb(own["w_sel"] if mark == 2 else own["w_cue"] if mark in (3, 4) else own["w_bar"])
             if lvl == 0:
-                d.rectangle([3 * k, 100 * k - 2, 15 * k, 100 * k + 1], fill=rgb(own["w_cue"] if mark == 4 else own["m_off"]))
+                d.rectangle([2 * k, 100 * k - 2, 7 * k, 100 * k + 1], fill=rgb(own["w_cue"] if mark == 4 else own["m_off"]))
             else:
-                half = max(5, lvl * 95 // 8)
-                d.rounded_rectangle([3 * k, (100 - half) * k, 15 * k - 1, (100 + half) * k], radius=3 * k, fill=bar)
-            if mark in (1, 2):
+                half = max(3, lvl * 95 // (H - 1))
+                d.rounded_rectangle([2 * k, (100 - half) * k, 7 * k - 1, (100 + half) * k], radius=2 * k, fill=bar)
+            if mark in (1, 2):   # a cue: a line down the left edge and a small flag at the top
                 line = rgb(own["w_sel"] if mark == 2 else own["w_cue"])
-                d.rectangle([0, 0, 3 * k - 1, h * k], fill=line)
-                d.polygon([(0, 0), (11 * k, 0), (0, 11 * k)], fill=line)
+                d.rectangle([0, 0, 2 * k - 1, h * k], fill=line)
+                d.polygon([(0, 0), (8 * k, 0), (0, 8 * k)], fill=line)
             elif mark == 3:
                 white = (255, 255, 255, 255)
                 if own.get("glow"):
-                    d.rectangle([5 * k, 0, 13 * k - 1, h * k], fill=rgb(own["w_cue"])[:3] + (110,))
-                d.rectangle([7 * k, 0, 11 * k - 1, h * k], fill=white)
-                d.polygon([(3 * k, 0), (15 * k, 0), (9 * k, 8 * k)], fill=white)
-                d.polygon([(3 * k, h * k), (15 * k, h * k), (9 * k, h * k - 8 * k)], fill=white)
-            strip.paste(im.resize((w, h), Image.LANCZOS), (0, (mark * 9 + lvl) * h))
+                    d.rectangle([2 * k, 0, 7 * k - 1, h * k], fill=rgb(own["w_cue"])[:3] + (110,))
+                d.rectangle([int(3.5 * k), 0, int(5.5 * k) - 1, h * k], fill=white)
+                d.polygon([(0, 0), (9 * k, 0), (int(4.5 * k), 6 * k)], fill=white)
+                d.polygon([(0, h * k), (9 * k, h * k), (int(4.5 * k), h * k - 6 * k)], fill=white)
+            strip.paste(im.resize((w, h), Image.LANCZOS), (0, (mark * H + lvl) * h))
     strip.save(path)
 
 
 def background(look, own, a):
     """The plate behind everything (1280 x 628): print marks in the corners, rack screws, or the plain colour field."""
+    if look == "vintage":   # the panel, a darker strip along the bottom and four screws
+        screws = "".join('<circle cx="%d" cy="%d" r="4" fill="#a79f8d" stroke="#2a2723" stroke-width="1.2"/>'
+                         '<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="#2a2723" stroke-width="1.2"/>' % (x, y, x - 2.5, y - 2.5, x + 2.5, y + 2.5)
+                         for x, y in ((9, 9), (1271, 9), (9, 619), (1271, 619)))
+        return ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 628"><rect width="1280" height="628" '
+                'fill="#%s"/><rect y="614" width="1280" height="14" fill="#a79f8d"/>%s</svg>' % (own["plate"], screws))
     if look == "print":
         marks = "".join(
             '<path d="M%d %d h%d M%d %d v%d" stroke="#1b1a18" stroke-width="1.5" fill="none"/>' % (x, y, dx, x, y, dy)
@@ -137,7 +152,7 @@ def hero_css(look, r):
     """The main knob (the only one of radius r) wears the plugin's colour."""
     f = '.knob-face[r="%d"]' % (r - 2)
     s = '.knob-sheen[r="%d"]' % (r - 2)
-    if look == "print":
+    if look in ("print", "vintage"):
         return ("%s { fill: var(--accent); stroke: var(--p-ink); stroke-width: 3; }\n"
                 "%s { fill: #fff; opacity: 0.16; }\n" % (f, s))
     if look == "rack":
@@ -155,20 +170,20 @@ def look_block(own):
     """The LOOK selector as a panel in the lower half of an existing SETUP tab."""
     return [
         'frame x=14 y=410 w=1252 h=294 title="LOOK"',
-        'enum_h cx=640 cy=540 label="" key=theme sw=372 sh=110',
+        'enum_h cx=640 cy=540 label="" key=theme sw=%d sh=110' % (1116 // len(LOOKS)),
         'text cx=640 cy=636 label="A NEW LOOK SHOWS THE NEXT TIME THIS PLUGIN LOADS" size=1.9 weight=700 color=%s' % own["title"],
         'text cx=640 cy=674 label="TAKE THE PLUGIN OFF AND ADD IT AGAIN, OR LOAD YOUR PROJECT AGAIN" size=1.6 weight=600 color=%s' % own["dim"],
     ]
 
 
 def settings_tab(look, own, bgfile):
-    big = {"print": 2.6, "rack": 2.6, "block": 3.0}[look]
+    big = {"print": 2.6, "rack": 2.6, "block": 3.0, "vintage": 2.6}[look]
     return [
         "[tab SETTINGS]",
         "art file=%s" % bgfile,
         'frame x=14 y=100 w=1252 h=604 title="SETTINGS"',
         'text cx=640 cy=214 label="LOOK" size=%g weight=700 color=%s' % (big, own["title"]),
-        'enum_h cx=640 cy=340 label="" key=theme sw=372 sh=132',
+        'enum_h cx=640 cy=340 label="" key=theme sw=%d sh=132' % (1116 // len(LOOKS)),
         'text cx=640 cy=486 label="A NEW LOOK SHOWS THE NEXT TIME THIS PLUGIN LOADS" size=1.9 weight=700 color=%s' % own["title"],
         'text cx=640 cy=536 label="TAKE THE PLUGIN OFF AND ADD IT AGAIN, OR LOAD YOUR PROJECT AGAIN" size=1.6 weight=600 color=%s' % own["dim"],
         'text cx=640 cy=650 label="PotentialSuite  ·  PotentialBreaks" size=1.4 weight=600 case=none color=%s' % own["dim"],

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a Potential plugin's three looks and merge them into one skin the plugin can switch between.
+"""Build a Potential plugin's four looks and merge them into one skin the plugin can switch between.
 
     build_looks.py <port>/vst <mpc-vst-plugins dir>
 

@@ -26,10 +26,10 @@
 #include <string.h>
 #include <time.h>
 
-#define PT_LOOKS 3
+#define PT_LOOKS 4
 #define PT_GUARD_MS 3000
 
-static const char *const PT_LOOK_DIR[PT_LOOKS] = {"print", "rack", "block"};
+static const char *const PT_LOOK_DIR[PT_LOOKS] = {"print", "rack", "block", "vintage"};
 static const char *const PT_LOOK_FILES[] = {"TUI.json", "Q-Links.json", "Q-Links - 8by1.json"};
 
 typedef struct {

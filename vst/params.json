@@ -943,7 +943,8 @@
    "options": [
     "Print Plate",
     "Night Rack",
-    "Colour Block"
+    "Colour Block",
+    "Vintage"
    ],
    "default": 0
   },
@@ -1011,6 +1012,518 @@
    ],
    "default": 0
   },
-  {"key": "manual_page", "name": "Manual Page", "options": ["START", "CONTROLS", "MATCH", "WAVE", "SAVING", "SUITE", "HELP"], "default": 0}
+  {"key": "manual_page", "name": "Manual Page", "options": ["START", "CONTROLS", "MATCH", "WAVE", "SAVING", "SUITE", "HELP"], "default": 0},
+  {
+   "key": "w_64",
+   "name": "Wave 65",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_65",
+   "name": "Wave 66",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_66",
+   "name": "Wave 67",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_67",
+   "name": "Wave 68",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_68",
+   "name": "Wave 69",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_69",
+   "name": "Wave 70",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_70",
+   "name": "Wave 71",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_71",
+   "name": "Wave 72",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_72",
+   "name": "Wave 73",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_73",
+   "name": "Wave 74",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_74",
+   "name": "Wave 75",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_75",
+   "name": "Wave 76",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_76",
+   "name": "Wave 77",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_77",
+   "name": "Wave 78",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_78",
+   "name": "Wave 79",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_79",
+   "name": "Wave 80",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_80",
+   "name": "Wave 81",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_81",
+   "name": "Wave 82",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_82",
+   "name": "Wave 83",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_83",
+   "name": "Wave 84",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_84",
+   "name": "Wave 85",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_85",
+   "name": "Wave 86",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_86",
+   "name": "Wave 87",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_87",
+   "name": "Wave 88",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_88",
+   "name": "Wave 89",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_89",
+   "name": "Wave 90",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_90",
+   "name": "Wave 91",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_91",
+   "name": "Wave 92",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_92",
+   "name": "Wave 93",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_93",
+   "name": "Wave 94",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_94",
+   "name": "Wave 95",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_95",
+   "name": "Wave 96",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_96",
+   "name": "Wave 97",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_97",
+   "name": "Wave 98",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_98",
+   "name": "Wave 99",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_99",
+   "name": "Wave 100",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_100",
+   "name": "Wave 101",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_101",
+   "name": "Wave 102",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_102",
+   "name": "Wave 103",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_103",
+   "name": "Wave 104",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_104",
+   "name": "Wave 105",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_105",
+   "name": "Wave 106",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_106",
+   "name": "Wave 107",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_107",
+   "name": "Wave 108",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_108",
+   "name": "Wave 109",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_109",
+   "name": "Wave 110",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_110",
+   "name": "Wave 111",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_111",
+   "name": "Wave 112",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_112",
+   "name": "Wave 113",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_113",
+   "name": "Wave 114",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_114",
+   "name": "Wave 115",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_115",
+   "name": "Wave 116",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_116",
+   "name": "Wave 117",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_117",
+   "name": "Wave 118",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_118",
+   "name": "Wave 119",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_119",
+   "name": "Wave 120",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_120",
+   "name": "Wave 121",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_121",
+   "name": "Wave 122",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_122",
+   "name": "Wave 123",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_123",
+   "name": "Wave 124",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_124",
+   "name": "Wave 125",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_125",
+   "name": "Wave 126",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_126",
+   "name": "Wave 127",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  },
+  {
+   "key": "w_127",
+   "name": "Wave 128",
+   "min": 0,
+   "max": 1,
+   "default": 0,
+   "live": true
+  }
 ]
 }

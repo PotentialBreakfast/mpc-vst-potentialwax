@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.9.0 (2026-11-15)
+
+- A fourth look, **Vintage** (Potential1200's late-80s drum-machine look), on the LOOK keys.
+- WAVE page: 128 thin bars (were 64) with 12 heights (were 9), so the waveform and the playhead are finer.
+
 ## 1.8.0 (2026-11-14)
 - **The WAVE page's playhead moves.** It is checked about 40 times a second and only the two columns it moves between are redrawn, so it glides along the waveform. Before, every step made the MPC rebuild the whole screen, and on an MPC One the playhead stayed put.
 - **A new look for the playing sound:** the part already played lights up in PotentialWax's colour, from the cue to the playhead, and the playhead is a bright line with a notch at the top and bottom.

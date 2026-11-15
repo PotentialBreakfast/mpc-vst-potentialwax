@@ -3,7 +3,8 @@
  "accent": {
   "print": "d7263d",
   "rack": "ff5a6e",
-  "block": "f0616f"
+  "block": "f0616f",
+  "vintage": "d7263d"
  },
  "wave": "skin/wave/strip.png"
 }
