@@ -27,7 +27,7 @@ static int look_of(const mpc_engine_t *e, void *s) { char b[32] = ""; e->get_par
 int main(int argc, char **argv) {
     if (argc != 2) { fprintf(stderr, "usage: test_theme <plugin folder copy>\n"); return 2; }
     const mpc_engine_t *e = mpc_engine();
-    const char *names[4] = {"print", "rack", "block", "vintage"};
+    const char *names[5] = {"print", "rack", "block", "vintage", "hifi"};
     char top[900], sub[900], ui[900], line[64];
     snprintf(top, sizeof top, "%s/Plugin Skins/TUI.json", argv[1]);
     snprintf(ui, sizeof ui, "%s/Plugin Skins/ui.txt", argv[1]);
@@ -39,8 +39,8 @@ int main(int argc, char **argv) {
     snprintf(sub, sizeof sub, "%s/Plugin Skins/print/TUI.json", argv[1]);
     CHECK(look_of(e, s) == 0 && same(top, sub), "a theme value while loading is ignored");
     usleep(3200 * 1000);
-    for (int k = 1; k <= 4; k++) {
-        int i = k % 4;   /* rack, block, vintage, print */
+    for (int k = 1; k <= 5; k++) {
+        int i = k % 5;   /* rack, block, vintage, hi-fi, print */
         snprintf(line, sizeof line, "%d", i);
         e->set_param(s, "theme", line);
         snprintf(sub, sizeof sub, "%s/Plugin Skins/%s/TUI.json", argv[1], names[i]);
