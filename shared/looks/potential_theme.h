@@ -1,4 +1,4 @@
-/* potential_theme.h: the LOOK switch every Potential plugin shares (parameter "theme": Print Plate / Night Rack / Colour Block).
+/* potential_theme.h: the LOOK switch every Potential plugin shares (parameter "theme": Print Plate / Night Rack / Colour Block / Vintage / Hi-Fi).
  *
  * MPC reads a plugin's skin once, when the plugin is put on a track or a project loads, and has no way to redraw it
  * afterwards. So the three looks ship side by side (Plugin Skins/print, /rack, /block, built by shared/looks/build_looks.py
@@ -26,10 +26,10 @@
 #include <string.h>
 #include <time.h>
 
-#define PT_LOOKS 4
+#define PT_LOOKS 5
 #define PT_GUARD_MS 3000
 
-static const char *const PT_LOOK_DIR[PT_LOOKS] = {"print", "rack", "block", "vintage"};
+static const char *const PT_LOOK_DIR[PT_LOOKS] = {"print", "rack", "block", "vintage", "hifi"};
 static const char *const PT_LOOK_FILES[] = {"TUI.json", "Q-Links.json", "Q-Links - 8by1.json"};
 
 typedef struct {

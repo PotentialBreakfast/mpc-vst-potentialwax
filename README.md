@@ -58,9 +58,9 @@ You don't have to type any paths. It looks in three places:
 
 Every sub-folder becomes a **library**. After adding songs, tap **RESCAN** (on the BROWSE page). **MP3, WAV and FLAC** files are supported.
 
-## Four looks
+## Five looks
 
-PotentialWax comes in four looks: **Print Plate** (the default), **Night Rack**, **Colour Block** and **Vintage** (a late-80s drum machine: warm grey panel, cream keys, an amber display). Open the **SETUP** page and tap one of the big LOOK keys. The new look shows the next time the plugin loads: take it off the track and add it again, or load your project again. Your choice is kept on your MPC for every project. The sound and the controls are the same in all four.
+PotentialWax comes in five looks: **Print Plate** (the default), **Night Rack**, **Colour Block**, **Vintage** (a late-80s drum machine: warm grey panel, cream keys, an amber display) and **Hi-Fi** (PotentialBox's look: walnut cheeks, a brushed charcoal faceplate, domed knobs lit in the plugin's colour, moulded cream keys, green glass displays). Open the **SETUP** page and tap one of the big LOOK keys. The new look shows the next time the plugin loads: take it off the track and add it again, or load your project again. Your choice is kept on your MPC for every project. The sound and the controls are the same in all four.
 
 ## Limitations
 

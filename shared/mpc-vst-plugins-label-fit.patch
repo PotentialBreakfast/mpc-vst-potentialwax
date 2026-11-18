@@ -1,5 +1,51 @@
+diff --git a/tools/html_art.py b/tools/html_art.py
+index eec4a52..c618f7b 100755
+--- a/tools/html_art.py
++++ b/tools/html_art.py
+@@ -346,6 +346,7 @@ def scope_svg(src, prefix):
+ class Art:
+     def __init__(self, href=None):
+         self.href = href         # the editor's path -> URL; None: the renderer inlines each image once (page defs)
++        self.defs = []           # art_defs= files: their <defs> go into the page as they are (ids not scoped)
+         self.images = {}         # image path -> its id in the page's defs (renderer)
+         self.theme = dict(THEME)
+         self.td3 = False
+@@ -368,6 +369,8 @@ class Art:
+                 self.theme[k[6:]] = v.strip()
+             elif k == "art_css":
+                 self.css.append(v.strip())
++            elif k == "art_defs":     # PotentialSuite: an SVG of <defs> (gradients, filters) the stylesheet can use
++                self.defs.append(v.strip())
+ 
+     def text(self, x, y, s, cls, anchor="middle", extra=""):
+         return '<text class="%s" x="%g" y="%g" text-anchor="%s" dominant-baseline="central"%s>%s</text>' % (
+@@ -732,6 +735,15 @@ class Art:
+             raise SystemExit("html_art: bad command: %s (%d fields)" % (op, n))
+ 
+     # ---- rendering ----
++    def extra_defs(self):
++        """The art_defs= files' contents, outer <svg> removed, so the stylesheet can use url(#their-ids)."""
++        out = []
++        for path in self.defs:
++            src = re.sub(r"<\?xml[^>]*\?>|<!DOCTYPE[^>]*>", "", open(path, encoding="utf-8").read()).strip()
++            src = re.sub(r"^<svg\b[^>]*>", "", src)
++            out.append(re.sub(r"</svg>\s*$", "", src))
++        return "".join(out)
++
+     def image_defs(self):
+         """Each image the drawings use, once, as a data: URI (they refer to it with <use>)."""
+         import base64
+@@ -762,7 +774,7 @@ class Art:
+         return ('<!doctype html><html><head><meta charset="utf-8"><style>:root{%s}html,body{margin:0;background:transparent}'
+                 'svg{display:block}</style>%s</head><body><svg id="c" xmlns="http://www.w3.org/2000/svg" class="%s" '
+                 'width="%d" height="%d">%s%s<g id="g"></g></svg></body></html>') % (
+-            vars_, "".join(css), "td3" if self.td3 else "", W, H, DEFS, self.image_defs())
++            vars_, "".join(css), "td3" if self.td3 else "", W, H, DEFS + self.extra_defs(), self.image_defs())
+ 
+     def render(self):
+         from PIL import Image
 diff --git a/tools/shadow_skin.py b/tools/shadow_skin.py
-index 3fcf899..11609a8 100644
+index 3fcf899..35a8948 100644
 --- a/tools/shadow_skin.py
 +++ b/tools/shadow_skin.py
 @@ -519,7 +519,7 @@ def label_cmds(w, title_font=None):
@@ -11,7 +57,17 @@ index 3fcf899..11609a8 100644
      if k == "enum_v":
          n = len(w["options"])
          return ["text|%d|%d|%s|%s|%s" % (w["cx"], w["cy"] - (n * 32) // 2 - 24, s, ACCENT_HI, lab)]
-@@ -1006,6 +1006,7 @@ def build(layout_path, params, skin_dir, art_bin, png_from_ppm):
+@@ -775,7 +775,8 @@ def build(layout_path, params, skin_dir, art_bin, png_from_ppm):
+                                  % (w["kind"], w.get("key") or w.get("file") or w.get("title", "")))
+     theme_conf = os.path.join(work, "theme.conf")
+     open(theme_conf, "w").write("\n".join(   # art_css= is relative to the layout; the renderer runs elsewhere
+-        "art_css=" + os.path.join(base_dir, l[8:].strip()) if l.startswith("art_css=") else l
++        "art_css=" + os.path.join(base_dir, l[8:].strip()) if l.startswith("art_css=") else
++        "art_defs=" + os.path.join(base_dir, l[9:].strip()) if l.startswith("art_defs=") else l
+         for l in top if not l.startswith("qlinks_track")) + "\n")
+     script.append("theme|" + theme_conf)
+ 
+@@ -1006,6 +1007,7 @@ def build(layout_path, params, skin_dir, art_bin, png_from_ppm):
                      scale = min((bw - 24) / (max(len(longer), 1) * 10.0), (bh - 12) / 14.0)
                      if scale < 1.15:
                          scale = 1.15
@@ -19,7 +75,7 @@ index 3fcf899..11609a8 100644
                  live_cap = bool(w.get("tsize") and w.get("get") in index)
                  on_fill = BTN_ON or ACCENT
                  for state, col, lab in (("off", base, lab_off), ("on", on_fill, lab_on)):
-@@ -1378,8 +1379,13 @@ def build(layout_path, params, skin_dir, art_bin, png_from_ppm):
+@@ -1378,8 +1380,13 @@ def build(layout_path, params, skin_dir, art_bin, png_from_ppm):
          for path, w_px, h_px, text, color in label_overlays:
              im = Image.open(path).convert("RGB")
              dr = ImageDraw.Draw(im)

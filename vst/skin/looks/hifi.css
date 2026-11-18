@@ -1,0 +1,90 @@
+/* PotentialSuite look E, "Hi-Fi" (PotentialBox's own look): a hi-fi deck. A brushed charcoal faceplate set in walnut
+ * cheeks, raised panels, domed black knobs with a lit value arc in the plugin's colour (a drawn filmstrip), moulded
+ * cream keys with a lit top edge and a shadow under them, amber for whatever is selected, green glass displays.
+ * Jost + DM Mono (SIL OFL, fonts/). An original design: it copies no maker's panel.
+ * The gradients and filters (url(#hf-...)) are in _hifi_defs.svg, drawn by shared/looks/hifi_art.py.
+ * Only looks change here: every control stays where the layout puts it. */
+@font-face { font-family: "Jost"; font-weight: 400; src: url("fonts/Jost-400.woff2"); }
+@font-face { font-family: "Jost"; font-weight: 600; src: url("fonts/Jost-600.woff2"); }
+@font-face { font-family: "Jost"; font-weight: 700; src: url("fonts/Jost-700.woff2"); }
+@font-face { font-family: "DM Mono"; font-weight: 400; src: url("fonts/DMMono-400.woff2"); }
+@font-face { font-family: "DM Mono"; font-weight: 500; src: url("fonts/DMMono-500.woff2"); }
+@font-face { font-family: "Plex Cond"; font-weight: 700; src: url("fonts/PlexCond-700.woff2"); }
+
+:root {
+  --font: "Jost", "Titillium Web", sans-serif;
+  --mono: "DM Mono", "Titillium Web", monospace;
+  --title-font: var(--font);
+  --title-size: 23px;
+  --label-size: 15px;
+  --seg-size: 14px;
+  --button-size: 20px;
+  --radius: 8px;
+  --sheen: 0.2;
+  --shadow: none;
+  --h-ink: #ece6d6;
+  --h-dim: #b3ad9e;
+  --h-cream: #d8d2c2;
+  --h-amber: #f2c879;
+}
+text { font-family: var(--font); font-weight: 600; }
+
+/* panels: a raised plate on the faceplate */
+.frame-border { fill: url(#hf-panel); stroke: #3d3c37; stroke-width: 1.5; rx: 9px; filter: url(#hf-raised); }
+.frame-rule { stroke: #57544b; stroke-width: 1.5; }
+.frame-title { font-family: var(--font); font-weight: 700; font-size: var(--title-size); fill: var(--h-ink);
+               letter-spacing: 0.1em; }
+.text { font-family: var(--font); font-weight: 700; letter-spacing: 0.1em; fill: var(--h-dim); }
+
+/* knobs are a drawn filmstrip (_knob_hifi.png); these only matter for a knob with its own look */
+.knob-track { stroke: #34353b; stroke-width: 5px !important; stroke-linecap: round; }
+.knob-arc { stroke: var(--accent); stroke-width: 5px !important; stroke-linecap: round; filter: url(#hf-glow); }
+.knob-face { fill: url(#dome-radial); stroke: #4b4942; stroke-width: 1.5; filter: drop-shadow(0 5px 4px rgba(0, 0, 0, 0.75)); }
+.knob-sheen { fill: url(#sheen-radial); opacity: 0.4; }
+.knob-pointer { stroke: #f2ecdc; stroke-linecap: round; }
+
+/* switches: a glass slot, a cream thumb */
+.pill-track { fill: url(#hf-well); stroke: #3a3934; stroke-width: 1.5; filter: url(#hf-inset); }
+.pill-thumb { fill: url(#hf-cream); filter: url(#hf-keylow); }
+.on .pill-track { fill: var(--accent); filter: url(#hf-glow); }
+.on .pill-thumb { fill: url(#hf-cream); }
+
+/* buttons: moulded keys. Each key colour gets its own gradient; the lighting filter gives the edge and the shadow */
+.button-bg { stroke: #0e0f12; stroke-width: 1.2; filter: url(#hf-key); }
+.button[style*="--fill:#d8d2c2"] .button-bg { fill: url(#hf-cream); }
+.button[style*="--fill:#f2c879"] .button-bg { fill: url(#hf-amber); }
+.button[style*="--fill:#2a2b2f"] .button-bg, .button[style*="--fill:#3a3b42"] .button-bg { fill: url(#hf-dark); }
+.button-sheen { fill: url(#key-gloss); opacity: 0.55; }
+.button-tx { font-family: var(--font); font-weight: 700; font-size: var(--button-size); letter-spacing: 0.02em; fill: #241d12; }
+
+/* option segments: a row of keys */
+.seg-bg { stroke: #0e0f12; stroke-width: 1.2; filter: url(#hf-keylow); }
+.seg[style*="--fill:#2a2b2f"] .seg-bg { fill: url(#hf-dark); }
+.seg[style*="--fill:#f2c879"] .seg-bg { fill: url(#hf-amber); }
+.seg[style*="--fill:#d8d2c2"] .seg-bg { fill: url(#hf-cream); }
+.seg-sheen { fill: url(#key-gloss); opacity: 0.35; }
+/* option names are set in a condensed face so long ones fit their keys */
+.seg-tx { font-family: "Plex Cond", var(--font); font-weight: 700; font-size: var(--seg-size); letter-spacing: 0.04em; }
+
+/* text boxes: green glass display windows, set into the panel */
+.box-label { font-family: var(--font); font-weight: 700; letter-spacing: 0.1em; fill: var(--h-dim); }
+.box { fill: url(#hf-glass); stroke: #2b3a30; stroke-width: 1.5; rx: 5px; filter: url(#hf-inset); }
+.arrow-bg { fill: url(#hf-dark); stroke: #0e0f12; stroke-width: 1.2; filter: url(#hf-keylow); }
+.arrow { fill: var(--h-amber); filter: url(#hf-glow); }
+
+/* list rows and pads */
+.tile { filter: url(#hf-keylow); }
+.tile-border { stroke: #3a3934; }
+.tile-rule { fill: #2c3a30; }
+
+/* sliders */
+.slider-well { fill: url(#hf-well); stroke: #3a3934; stroke-width: 1.5; filter: url(#hf-inset); }
+.slider-fill { fill: var(--accent); filter: url(#hf-glow); }
+.slider-thumb { fill: url(#hf-cream); stroke: #0e0f12; stroke-width: 1.2; filter: url(#hf-keylow); }
+
+/* faders: a dark slot with printed ticks, a cream cap with a line in the plugin's colour */
+.look-slot { fill: url(#hf-well); stroke: #3a3934; stroke-width: 1; filter: url(#hf-inset); }
+.look-tick { stroke: var(--h-dim); stroke-width: 1.5; }
+.look-fader { fill: url(#hf-cream); stroke: #0e0f12; stroke-width: 1.2; filter: url(#hf-key); }
+.look-ridge { stroke: #b6af9e; stroke-width: 1.5; }
+.look-line { stroke: var(--accent); }

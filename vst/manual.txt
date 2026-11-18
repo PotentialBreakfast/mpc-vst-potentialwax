@@ -67,6 +67,6 @@ Effects go on the track's inserts. SAVE KIT saves the pads as you hear them in t
 - Keep Tempo sounds more stretched on big tempo or key changes. Vinyl has no stretch artefacts.
 - 8 voices, 44.1 kHz playback. CHOKE and RELEASE are on the SETUP page.
 - Q-Links: PITCH, VOLUME, TEMPO, KEY, CUES ON, PAD PLAYS, MODE and PITCHING.
-- Looks: Print Plate, Night Rack, Colour Block or Vintage, on the SETUP page.
+- Looks: Print Plate, Night Rack, Colour Block, Vintage or Hi-Fi, on the SETUP page.
 
 Ideas, bugs and criticism are all welcome: github.com/PotentialBreakfast/mpc-vst-potentialwax

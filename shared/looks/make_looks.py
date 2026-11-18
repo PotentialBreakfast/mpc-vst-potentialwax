@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PotentialSuite looks: one layout, three looks.
+"""PotentialSuite looks: one layout, five looks.
 
     make_looks.py <port>/vst        writes vst/layout.conf (Print Plate, the default), vst/layout.rack.conf (Night Rack)
                                     and vst/layout.block.conf (Colour Block) from vst/layout.base.conf, plus each look's
@@ -25,9 +25,10 @@ import re
 import sys
 
 # Print Plate first (the default), then Night Rack, Colour Block and Vintage (from Potential1200).
-LOOKS = ("print", "rack", "block", "vintage")
-TITLES = {"print": "Print Plate", "rack": "Night Rack", "block": "Colour Block", "vintage": "Vintage"}
-FILES = {"print": "layout.conf", "rack": "layout.rack.conf", "block": "layout.block.conf", "vintage": "layout.vintage.conf"}
+LOOKS = ("print", "rack", "block", "vintage", "hifi")
+TITLES = {"print": "Print Plate", "rack": "Night Rack", "block": "Colour Block", "vintage": "Vintage", "hifi": "Hi-Fi"}
+FILES = {"print": "layout.conf", "rack": "layout.rack.conf", "block": "layout.block.conf", "vintage": "layout.vintage.conf",
+         "hifi": "layout.hifi.conf"}
 
 
 def mix(a, b, t):
@@ -40,7 +41,15 @@ def palette(look, a, lit):
     the colours its own lines and pictures use: title (headline text), dim (quiet captions), disp (live text in a
     display window), key / primary (a button's own fill), cool (a second caption colour), m_* (meter pictures),
     w_* (the waveform strip)."""
-    if look == "vintage":   # a late-80s drum machine: warm grey panel, beige keys, an amber display, the plugin's colour for what is selected
+    if look == "hifi":      # a hi-fi deck: charcoal plate in walnut, domed knobs lit in the plugin's colour, cream keys, green glass
+        t = dict(bg="17181b", panel="17181b", line="5d5a50", ink="ece6d6", ink_dim="b3ad9e", ink_faint="7d786b",
+                 accent=a, accent_hi="f4efe0", knob_face="24252a", knob_ring="34353b", knob_dot=a,
+                 seg_active="f2c879", seg_inactive="2a2b2f", seg_active_tx="241d12", btn_text="241d12",
+                 btn_bg="d8d2c2", btn_on="f2c879", tile_on="3a3b42", lcd="0b140e", box="0b140e")
+        own = dict(title="f4efe0", dim="b3ad9e", disp="8cffb0", key="d8d2c2", plate="17181b", cool="b3ad9e", primary="f2c879",
+                   m_bg="0b140e", m_off="16241a", m_on="8cffb0", m_hi="d8ffe4", m_cool="b3ad9e", m_mid="f4efe0",
+                   w_bar="5f8a6c", w_cue=a, w_selbg="16241a", w_sel="8cffb0", glow=True)
+    elif look == "vintage":   # a late-80s drum machine: warm grey panel, beige keys, an amber display, the plugin's colour for what is selected
         t = dict(bg="bdb6a6", panel="bdb6a6", line="2a2723", ink="2a2723", ink_dim="3a352e", ink_faint="6f675a",
                  accent=a, accent_hi="2a2723", knob_face="2a2723", knob_ring="2a2723", knob_dot="f2a33a",
                  seg_active="2a2723", seg_inactive="e6dcc6", seg_active_tx="f2a33a", btn_text="2a2723",
@@ -152,6 +161,9 @@ def hero_css(look, r):
     """The main knob (the only one of radius r) wears the plugin's colour."""
     f = '.knob-face[r="%d"]' % (r - 2)
     s = '.knob-sheen[r="%d"]' % (r - 2)
+    if look == "hifi":
+        return ("%s { stroke: var(--accent); stroke-width: 3; }\n"
+                "%s ~ .knob-pointer { stroke: var(--accent); }\n" % (f, f))
     if look in ("print", "vintage"):
         return ("%s { fill: var(--accent); stroke: var(--p-ink); stroke-width: 3; }\n"
                 "%s { fill: #fff; opacity: 0.16; }\n" % (f, s))
@@ -177,7 +189,7 @@ def look_block(own):
 
 
 def settings_tab(look, own, bgfile):
-    big = {"print": 2.6, "rack": 2.6, "block": 3.0, "vintage": 2.6}[look]
+    big = {"print": 2.6, "rack": 2.6, "block": 3.0, "vintage": 2.6, "hifi": 2.6}[look]
     return [
         "[tab SETTINGS]",
         "art file=%s" % bgfile,
@@ -283,14 +295,16 @@ def make(vst):
         while the_r in others:
             the_r += 1
     for look in LOOKS:
-        a = cfg["accent"][look].lower()
+        a = cfg["accent"].get(look, cfg["accent"]["rack"]).lower()
         theme, own = palette(look, a, cfg["accent"]["rack"].lower())
         own["lcd"] = theme["lcd"]
-        bgfile = "skin/looks/_bg_%s.svg" % look
+        bgfile = "skin/looks/_bg_%s.%s" % (look, "png" if look == "hifi" else "svg")
         out = ["# %s: the %s look. Made by shared/looks/make_looks.py from layout.base.conf: edit that file, not this one."
                % (cfg.get("name", "Potential plugin"), TITLES[look])]
         out += ["theme_%s=%s" % kv for kv in theme.items()]
         out += ["art_css=skin/looks/_%s.css" % look]
+        if look == "hifi":    # drawn pictures: knobs as a filmstrip, the page, and the gradients / filters hifi.css uses
+            out += ["art_defs=skin/looks/_hifi_defs.svg", "knob_strip=skin/looks/_knob_hifi.png"]
         hero_r = the_r
         made = set()
         tab, placed = None, False
@@ -332,6 +346,8 @@ def make(vst):
                 s += " tcolor=%s" % own["disp"]
             if kind == "knob" and attr(s, "key") in heroes:
                 s = re.sub(r"\br=\d+", "r=%d" % hero_r, s, count=1)
+                if look == "hifi" and not any(attr(s, k) for k in ("look", "img", "strip")):
+                    s += " strip=skin/looks/_knob_hifi_hero.png"
             out.append(s)
         if tab == "SETUP" and not placed:
             out += look_block(own)
@@ -351,7 +367,11 @@ def make(vst):
             if os.path.exists(os.path.join(ldir, extra)):
                 css += "\n" + open(os.path.join(ldir, extra)).read()
         open(os.path.join(ldir, "_%s.css" % look), "w").write(css)
-        open(os.path.join(ldir, "_bg_%s.svg" % look), "w").write(background(look, own, a))
+        if look == "hifi":
+            import hifi_art
+            hifi_art.write_all(ldir, a)
+        else:
+            open(os.path.join(ldir, "_bg_%s.svg" % look), "w").write(background(look, own, a))
     return [FILES[k] for k in LOOKS]
 
 
