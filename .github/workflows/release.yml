@@ -68,7 +68,7 @@ jobs:
         run: |
           git clone -q "$KIT_REPO" kit && git -C kit checkout -q "$KIT_REF"
           git -C kit apply ../shared/mpc-vst-plugins-label-fit.patch
-          pip install "ziglang==$ZIG_VERSION" pillow playwright
+          pip install "ziglang==$ZIG_VERSION" pillow numpy playwright   # numpy: the Hi-Fi look's drawn pictures (shared/looks/hifi_art.py)
           python -m playwright install --with-deps chromium   # the skins are drawn by the kit's browser renderer ("art": "html")
           sudo apt-get update -qq && sudo apt-get install -y -qq gcc
 

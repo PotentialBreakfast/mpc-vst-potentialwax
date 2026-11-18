@@ -2,7 +2,7 @@
 
 You don't need to build it to use it: download the zip from [Releases](../../releases). This is for people who want to change it.
 
-It's built with sd88me's [mpc-vst-plugins](https://github.com/sd88me/mpc-vst-plugins) kit, and needs Linux or WSL, `gcc`, Python 3, `pip install ziglang pillow playwright` and `python -m playwright install chromium` (the skin is drawn by the kit's browser renderer). You don't need Docker.
+It's built with sd88me's [mpc-vst-plugins](https://github.com/sd88me/mpc-vst-plugins) kit, and needs Linux or WSL, `gcc`, Python 3, `pip install ziglang pillow numpy playwright` and `python -m playwright install chromium` (the skin is drawn by the kit's browser renderer). You don't need Docker.
 
 ```
 git clone https://github.com/sd88me/mpc-vst-plugins
