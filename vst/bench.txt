@@ -1,2 +1,2 @@
-# MPC TOOLS bench (Open MPC tools/bench.c -j) on an MPC One, MPC OS 3.10.1, MPC running, 2026-11-15, PotentialWax 1.9.0
-{"plugin": "PotentialWax", "instrument": 1, "open_ms": 0.6, "p99_pct": 9.6, "max_pct": 12.6, "threads_pct": 0.7, "verdict": "PASS", "triggers": 34, "trigger_max_pct": 9.2}
+# MPC TOOLS bench (Open MPC tools/bench.c -j) on an MPC One, MPC OS 3.10.1, MPC running, 2026-11-19, PotentialWax 1.9.1
+{"plugin": "PotentialWax", "instrument": 1, "open_ms": 0.6, "p99_pct": 9.1, "max_pct": 11.8, "threads_pct": 0.5, "verdict": "PASS", "triggers": 34, "trigger_max_pct": 10.1}
